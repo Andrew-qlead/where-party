@@ -1,0 +1,33 @@
+name: Where Party Autopost
+
+on:
+  schedule:
+    - cron: "0 8,14,20 * * *"  # 3 раза в день: 8:00, 14:00, 20:00 UTC
+  workflow_dispatch:  # ручной запуск
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Load posted IDs cache
+        uses: actions/cache@v4
+        with:
+          path: data/posted_ids.json
+          key: posted-ids-${{ github.run_id }}
+          restore-keys: posted-ids-
+
+      - name: Run parser and post
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: python main.py

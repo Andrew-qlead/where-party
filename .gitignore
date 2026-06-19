@@ -1,0 +1,4 @@
+data/posted_ids.json
+__pycache__/
+*.pyc
+.env
