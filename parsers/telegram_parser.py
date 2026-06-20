@@ -10,28 +10,27 @@ SESSION_STRING = os.environ.get("TG_SESSION_STRING", "")
 PHOTO_DIR = "data/photos"
 
 SOURCE_CHANNELS = [
-    # IT / нетворкинг
-    "cyprusit",
-    "hub_cy",
-    # Общие афиши
-    "cyproplan",
+    # ── IT / нетворкинг ───────────────────────────────────────
+    "cyprusit",             # Cyprus IT — главный IT-канал
+    "hub_cy",               # Hub Cyprus
+    # ── Общие афиши ───────────────────────────────────────────
+    "cyproplan",            # Cyproplan — афиша всего Кипра
     "LentaCypRus",          # Лента Кипра
-    "Vestnik_Kipra",        # Вестник Кипра
+    "Vestnik_Kipra",        # Вестник Кипра (русскоязычная газета)
     "cyprus_kipr",          # Кипр Новости
     "evropakipr",           # Европа/Кипр
-    "whatsoncyprus",        # What's On Cyprus (EN)
-    "cypruseventss",        # Cyprus Events (EN)
-    # Спорт
+    "cyprus_music",         # Cyprus Culture & Music
+    "kipr_podslushano_limasol",   # Подслушано Лимасол
+    "kipr_podslushano_nicosia",   # Подслушано Никосия
+    # ── Спорт ─────────────────────────────────────────────────
     "KouspoRun",            # Беговые события Кипра
-    "CyprusRoadRaces",      # Шоссейные гонки Кипра
-    "limassol_sport",       # Спорт Лимасол
+    "CyprusRoadRaces",      # Шоссейные гонки
     "yoga_cyprus",          # Йога Кипр
     "padelcyprus",          # Падел Кипр
-    # Дети и семья
-    "Fractal_in_Cyprus",    # Кружки и мероприятия для детей
+    # ── Дети / семья ──────────────────────────────────────────
+    "Fractal_in_Cyprus",    # Кружки и лагеря для детей
     "kidscyprus",           # Детские события
-    "family_cyprus",        # Семейный Кипр
-    "mamacyprus",           # Мамы Кипра — анонсы детских событий
+    "mamacyprus",           # Мамы Кипра
 ]
 
 EVENT_KEYWORDS = [

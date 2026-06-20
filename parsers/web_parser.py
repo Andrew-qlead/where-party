@@ -24,6 +24,25 @@ EVENT_KEYWORDS = [
 ]
 
 RSS_SOURCES = [
+    # ── Русскоязычная афиша Кипра ─────────────────────────────────
+    {
+        "url": "https://vkcyprus.com/afisha/feed/",
+        "name": "vkcyprus",
+        "city": "Cyprus",
+        "filter": False,  # уже категория "Афиша"
+    },
+    {
+        "url": "https://afishamira.com/city/cyprus/feed/",
+        "name": "afishamira",
+        "city": "Cyprus",
+        "filter": False,  # концерты и события для русскоязычных
+    },
+    {
+        "url": "https://kiprinform.com/en/feed/",
+        "name": "kiprinform",
+        "city": "Cyprus",
+        "filter": True,
+    },
     # ── Афиша / культура ──────────────────────────────────────────
     {
         "url": "https://cyprus-mail.com/category/entertainment/whats-on/feed/",
