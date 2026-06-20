@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where Party Cyprus — Events in Limassol, Nicosia, Larnaca, Paphos</title>
+<meta name="description" content="Find the best events in Cyprus — concerts, parties, art exhibitions, food festivals, sports and more. Updated daily from 20+ sources.">
+<meta name="keywords" content="events Cyprus, events Limassol, events Nicosia, Larnaca events, Paphos events, concerts Cyprus, parties Cyprus, афиша Кипр, события Кипр">
+<link rel="canonical" href="https://whereparty.cy/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Where Party Cyprus — Events in Cyprus">
+<meta property="og:description" content="Find the best events in Cyprus — concerts, parties, exhibitions, sport and more.">
+<meta property="og:image" content="https://andrew-qlead.github.io/where-party/og.jpg">
+<meta property="og:url" content="https://whereparty.cy/">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Where Party Cyprus — Events in Cyprus">
+<meta name="twitter:description" content="Find the best events in Cyprus — concerts, parties, exhibitions, sport and more.">
+
+<!-- Schema.org WebSite -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Where Party Cyprus",
+  "url": "https://whereparty.cy/",
+  "description": "Aggregator of events in Cyprus — concerts, parties, exhibitions, sport, food festivals.",
+  "inLanguage": ["en", "ru"],
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://whereparty.cy/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+
+<script src="firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, query, orderBy, limit, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const app = initializeApp(window.FIREBASE_CONFIG);
+  const db = getFirestore(app);
+  window._db = db;
+  window._fs = { collection, query, orderBy, limit, where, getDocs };
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --espresso: #2B2A1A;
+  --espresso2: #1a1a10;
+  --gold: #C9A84C;
+  --limestone: #F2EDE2;
+  --muted: #F2EDE288;
+  --card-bg: #232215;
+  --border: #C9A84C18;
+  --terracotta: #C04A26;
+  --olive: #6F7A3B;
+}
+body { background: var(--espresso2); color: var(--limestone); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.5; }
+a { color: inherit; text-decoration: none; }
+
+/* NAV */
+nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--espresso2); z-index: 10; }
+.nav-logo { font-family: Georgia, serif; font-size: 20px; letter-spacing: 4px; }
+.nav-logo span { color: var(--gold); }
+.nav-links { display: flex; gap: 20px; font-size: 13px; color: var(--muted); }
+.nav-links a:hover { color: var(--gold); }
+.btn-tg { background: var(--gold); color: var(--espresso); border: none; border-radius: 8px; padding: 8px 18px; font-size: 12px; font-weight: 700; letter-spacing: 1px; cursor: pointer; white-space: nowrap; }
+
+/* HERO */
+.hero { text-align: center; padding: 80px 24px 60px; max-width: 700px; margin: 0 auto; }
+.hero-tag { font-size: 11px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 20px; }
+h1 { font-family: Georgia, serif; font-size: clamp(32px, 6vw, 56px); line-height: 1.15; color: var(--limestone); margin-bottom: 20px; }
+h1 em { color: var(--gold); font-style: normal; }
+.hero-sub { font-size: 16px; color: var(--muted); max-width: 480px; margin: 0 auto 36px; }
+.hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn-primary { background: var(--gold); color: var(--espresso); border: none; border-radius: 10px; padding: 14px 28px; font-size: 14px; font-weight: 700; letter-spacing: 1px; cursor: pointer; }
+.btn-secondary { background: transparent; color: var(--limestone); border: 1px solid var(--border); border-radius: 10px; padding: 14px 28px; font-size: 14px; cursor: pointer; }
+.hero-stats { display: flex; gap: 40px; justify-content: center; margin-top: 52px; flex-wrap: wrap; }
+.stat { text-align: center; }
+.stat-num { font-family: Georgia, serif; font-size: 32px; color: var(--gold); }
+.stat-label { font-size: 11px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+
+/* CITY FILTER */
+.filters { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 32px 24px 0; }
+.filter-btn { padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; transition: all .2s; }
+.filter-btn.active { background: var(--terracotta); border-color: var(--terracotta); color: #fff; font-weight: 600; }
+
+/* EVENTS GRID */
+.section { padding: 32px 24px 64px; max-width: 1100px; margin: 0 auto; }
+.section-title { font-family: Georgia, serif; font-size: 22px; color: var(--limestone); margin-bottom: 24px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: border-color .2s; cursor: pointer; }
+.card:hover { border-color: var(--gold); }
+.card-img { width: 100%; height: 180px; object-fit: cover; display: block; }
+.card-body { padding: 16px; }
+.card-cat { font-size: 10px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; margin-bottom: 8px; }
+.card-title { font-family: Georgia, serif; font-size: 18px; line-height: 1.3; margin-bottom: 10px; }
+.card-meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px; }
+.card-meta span { display: flex; align-items: center; gap: 4px; }
+
+/* CITY SECTIONS */
+.city-section { margin-bottom: 56px; }
+.city-title { font-family: Georgia, serif; font-size: 18px; color: var(--muted); margin-bottom: 16px; letter-spacing: 1px; }
+.city-title strong { color: var(--limestone); }
+
+/* HOW IT WORKS */
+.how { background: var(--espresso); padding: 64px 24px; text-align: center; }
+.how h2 { font-family: Georgia, serif; font-size: 28px; margin-bottom: 40px; }
+.steps { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; max-width: 800px; margin: 0 auto; }
+.step { max-width: 220px; }
+.step-num { font-family: Georgia, serif; font-size: 36px; color: var(--gold); margin-bottom: 12px; }
+.step-text { font-size: 14px; color: var(--muted); }
+
+/* CTA */
+.cta { text-align: center; padding: 80px 24px; }
+.cta h2 { font-family: Georgia, serif; font-size: 32px; margin-bottom: 16px; }
+.cta p { color: var(--muted); margin-bottom: 32px; }
+
+/* FOOTER */
+footer { border-top: 1px solid var(--border); padding: 24px; text-align: center; font-size: 12px; color: var(--muted); }
+footer a { color: var(--gold); }
+
+/* LOADING */
+.spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 600px) {
+  .nav-links { display: none; }
+  .hero { padding: 48px 16px 40px; }
+  .hero-stats { gap: 24px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">WR P<span>T</span></div>
+  <div class="nav-links">
+    <a href="#events">Events</a>
+    <a href="#how">How it works</a>
+    <a href="submit.html">Add Event</a>
+  </div>
+  <button class="btn-tg" onclick="window.open('https://t.me/WrPtCy','_blank')">📣 TELEGRAM</button>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag">Cyprus Events Aggregator</div>
+  <h1>Find what's happening<br>in <em>Cyprus</em> tonight</h1>
+  <p class="hero-sub">Concerts, parties, exhibitions, food & sport — collected from 20+ sources and updated every 2 hours.</p>
+  <div class="hero-btns">
+    <button class="btn-primary" onclick="window.open('https://t.me/WrPtBot?start=open','_blank')">🚀 Open Mini App</button>
+    <button class="btn-secondary" onclick="window.open('https://t.me/WrPtCy','_blank')">📣 Follow Channel</button>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num" id="stat-count">—</div><div class="stat-label">Events</div></div>
+    <div class="stat"><div class="stat-num">20+</div><div class="stat-label">Sources</div></div>
+    <div class="stat"><div class="stat-num">4</div><div class="stat-label">Cities</div></div>
+    <div class="stat"><div class="stat-num">2h</div><div class="stat-label">Update interval</div></div>
+  </div>
+</section>
+
+<div class="filters" id="city-filter">
+  <button class="filter-btn active" onclick="filterCity('all',this)">🌍 All cities</button>
+  <button class="filter-btn" onclick="filterCity('Limassol',this)">Limassol</button>
+  <button class="filter-btn" onclick="filterCity('Nicosia',this)">Nicosia</button>
+  <button class="filter-btn" onclick="filterCity('Larnaca',this)">Larnaca</button>
+  <button class="filter-btn" onclick="filterCity('Paphos',this)">Paphos</button>
+  <button class="filter-btn" onclick="filterCity('Ayia Napa',this)">Ayia Napa</button>
+</div>
+
+<section class="section" id="events">
+  <div class="section-title">Upcoming events</div>
+  <div class="spinner" id="spinner"></div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section class="how" id="how">
+  <h2>How it works</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-text">We collect events from Telegram channels, RSS feeds, and event platforms every 2 hours</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-text">Events are categorised, translated to English, and deduplicated automatically</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-text">Browse via Telegram Mini App, channel @WrPtCy, or right here on this page</div>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <h2>Running an event in Cyprus?</h2>
+  <p>Add it for free — it will appear in our Mini App, Telegram channel, and this page.</p>
+  <button class="btn-primary" onclick="window.location.href='submit.html'">➕ Add Your Event</button>
+</section>
+
+<footer>
+  © 2024 Where Party Cyprus &nbsp;·&nbsp;
+  <a href="https://t.me/WrPtCy">Telegram</a> &nbsp;·&nbsp;
+  <a href="submit.html">Add event</a>
+</footer>
+
+<script>
+const CAT_EMOJI = { nightlife:"🎉", music:"🎶", art:"🎨", food:"🍷", networking:"🎤", culture:"📖", outdoor:"🌊", sport:"🏃", kids:"👶", other:"📌" };
+const CAT_LABEL = { nightlife:"Nightlife", music:"Music", art:"Art", food:"Food & Wine", networking:"Networking", culture:"Culture", outdoor:"Outdoor", sport:"Sport", kids:"Kids", other:"Other" };
+
+let allEvents = [];
+let currentCity = "all";
+
+function filterCity(city, btn) {
+  currentCity = city;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderGrid();
+}
+
+function isExpired(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d)) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return d < today;
+}
+
+function matchCity(e) {
+  if (currentCity === "all") return true;
+  return (e.city || "").toLowerCase().includes(currentCity.toLowerCase());
+}
+
+function buildCard(e) {
+  const cat = e.category || "other";
+  const hasUrl = e.url && e.url.startsWith("http");
+  const photo = e.photo_url ? `<img class="card-img" src="${e.photo_url}" alt="${e.title_en||e.title||''}" loading="lazy" onerror="this.style.display='none'">` : "";
+  const city = e.city && e.city !== "Cyprus" ? `<span>📍 ${e.city}</span>` : "";
+  const date = e.date ? `<span>📅 ${e.date}</span>` : "";
+
+  // Schema.org Event разметка
+  const schemaDate = e.date ? new Date(e.date).toISOString().split("T")[0] : "";
+  const schema = schemaDate ? `
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"Event","name":"${(e.title_en||e.title||"").replace(/"/g,"'")}","startDate":"${schemaDate}","location":{"@type":"Place","name":"Cyprus","address":{"@type":"PostalAddress","addressCountry":"CY","addressLocality":"${e.city||"Cyprus"}"}},"url":"${e.url||""}","description":"${(e.full_text_en||"").slice(0,200).replace(/"/g,"'")}"}
+    <\/script>` : "";
+
+  return `${schema}<a class="card" href="${hasUrl ? e.url : "#"}" ${hasUrl ? 'target="_blank" rel="noopener"' : ""}>
+    ${photo}
+    <div class="card-body">
+      <div class="card-cat">${CAT_EMOJI[cat]} ${CAT_LABEL[cat]||cat}</div>
+      <div class="card-title">${e.title_en || e.title || ""}</div>
+      <div class="card-meta">${date}${city}</div>
+    </div>
+  </a>`;
+}
+
+function renderGrid() {
+  const filtered = allEvents.filter(e => !isExpired(e.date) && matchCity(e)).slice(0, 60);
+  const grid = document.getElementById("grid");
+  grid.innerHTML = filtered.length ? filtered.map(buildCard).join("") : `<p style="color:var(--muted)">No events found.</p>`;
+  document.getElementById("stat-count").textContent = allEvents.filter(e => !isExpired(e.date)).length;
+}
+
+async function loadEvents() {
+  const { collection, query, orderBy, limit, getDocs } = window._fs;
+  const q = query(collection(window._db, "events"), orderBy("created_at","desc"), limit(200));
+  const snap = await getDocs(q);
+  allEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  document.getElementById("spinner").style.display = "none";
+  renderGrid();
+}
+
+window.addEventListener("firebase-ready", loadEvents);
+</script>
+</body>
+</html>
