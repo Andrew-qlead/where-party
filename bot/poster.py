@@ -7,6 +7,8 @@ import time
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHANNEL_ID = os.environ.get("TELEGRAM_CHANNEL_ID", "")
 
+# ── Локальный JSON (только для Threads/Instagram — у них нет флага в Firebase) ──
+
 def load_posted_ids(path: str = "data/posted_ids.json") -> set:
     if os.path.exists(path):
         with open(path) as f:
@@ -17,6 +19,8 @@ def save_posted_ids(ids: set, path: str = "data/posted_ids.json"):
     os.makedirs("data", exist_ok=True)
     with open(path, "w") as f:
         json.dump(list(ids), f)
+
+# ── Форматирование ────────────────────────────────────────────────────────────
 
 def strip_markdown(text: str) -> str:
     text = re.sub(r'\*+', '', text)
@@ -34,21 +38,21 @@ def extract_title_and_body(full_text: str) -> tuple[str, str]:
 
 def pick_emoji(title: str) -> str:
     t = title.lower()
-    if any(w in t for w in ["music", "concert", "festival", "jazz", "dj", "live", "саксофон", "хор", "виолончель"]):
+    if any(w in t for w in ["music","concert","festival","jazz","dj","live","саксофон","хор","виолончель"]):
         return "🎶"
-    if any(w in t for w in ["party", "night", "club", "rave", "вечеринка"]):
+    if any(w in t for w in ["party","night","club","rave","вечеринка"]):
         return "🎉"
-    if any(w in t for w in ["art", "exhibition", "gallery", "выставка", "искусств"]):
+    if any(w in t for w in ["art","exhibition","gallery","выставка","искусств"]):
         return "🎨"
-    if any(w in t for w in ["food", "dinner", "brunch", "wine", "chef", "restaurant", "вино", "коктейль"]):
+    if any(w in t for w in ["food","dinner","brunch","wine","chef","restaurant","вино","коктейль"]):
         return "🍷"
-    if any(w in t for w in ["yoga", "sport", "run", "fitness", "велопрогулка", "скейт"]):
+    if any(w in t for w in ["yoga","sport","run","fitness","велопрогулка","скейт"]):
         return "🏃"
-    if any(w in t for w in ["book", "lecture", "talk", "meetup", "networking", "книг", "клуб"]):
+    if any(w in t for w in ["book","lecture","talk","meetup","networking","книг","клуб"]):
         return "🎤"
-    if any(w in t for w in ["kids", "children", "дети", "детск"]):
+    if any(w in t for w in ["kids","children","дети","детск"]):
         return "👶"
-    if any(w in t for w in ["beach", "outdoor", "природ", "sunset", "море"]):
+    if any(w in t for w in ["beach","outdoor","природ","sunset","море"]):
         return "🌊"
     return "📌"
 
@@ -62,7 +66,6 @@ def format_post(event: dict) -> str:
 
     emoji = pick_emoji(title)
     divider = "━" * 15
-
     lines = [divider, f"{emoji} {title.upper()}", divider, ""]
 
     if event.get("date"):
@@ -87,62 +90,97 @@ def format_post(event: dict) -> str:
     lines += ["", "#Cyprus #Events #WhereParty #Larnaca #Nicosia #Limassol"]
     return "\n".join(lines)
 
+# ── Отправка в Telegram ────────────────────────────────────────────────────────
+
 def send_text(text: str, channel: str = None) -> bool:
     ch = channel or CHANNEL_ID
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
-        r = requests.post(url, json={"chat_id": ch, "text": text, "disable_web_page_preview": False}, timeout=15)
+        r = requests.post(url, json={
+            "chat_id": ch, "text": text, "disable_web_page_preview": False
+        }, timeout=15)
         return r.ok
     except Exception as ex:
         print(f"[poster] send_text error: {ex}")
         return False
 
-def send_photo_with_caption(photo_path: str, caption: str, channel: str = None) -> bool:
+def send_photo_url(photo_url: str, caption: str, channel: str = None) -> bool:
+    """Отправляем фото по URL (не скачиваем локально)."""
     ch = channel or CHANNEL_ID
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
     try:
-        with open(photo_path, "rb") as f:
-            r = requests.post(url, data={"chat_id": ch, "caption": caption[:1024]}, files={"photo": f}, timeout=60)
+        r = requests.post(url, json={
+            "chat_id": ch,
+            "photo": photo_url,
+            "caption": caption[:1024],
+        }, timeout=15)
+        if not r.ok:
+            print(f"[poster] sendPhoto failed ({r.status_code}), falling back to text")
         return r.ok
     except Exception as ex:
-        print(f"[poster] send_photo error: {ex}")
+        print(f"[poster] send_photo_url error: {ex}")
         return False
 
+# ── Основная функция постинга — использует Firebase как источник правды ────────
+
 def post_new_events(events: list, channel_override: str = None, formatter=None):
+    """
+    Постим события в Telegram.
+    Фильтрация по posted_tg берётся из Firebase (поле в каждом event dict).
+    После успешного поста — ставим posted_tg=True в Firebase.
+    Локальный JSON больше не используется как фильтр для TG.
+    """
     if not BOT_TOKEN or not (channel_override or CHANNEL_ID):
         print("[poster] BOT_TOKEN или CHANNEL_ID не заданы")
         return
 
     channel = channel_override or CHANNEL_ID
-    posted_file = f"data/posted_{channel.strip('@')}.json" if channel_override else "data/posted_ids.json"
     fmt = formatter or format_post
+    is_main_channel = not channel_override  # основной RU канал
 
-    posted = load_posted_ids(posted_file)
+    # Firebase mark_posted — импортируем если доступно
+    mark_fb = None
+    try:
+        from db.firebase import mark_posted as _mark
+        mark_fb = _mark
+    except Exception:
+        pass
+
     new_count = 0
 
     for event in events:
         eid = event.get("id")
-        if eid in posted:
+        if not eid:
+            continue
+
+        # Пропускаем уже запощенные (флаг из Firebase, прочитанный при сохранении)
+        # Для основного канала проверяем posted_tg, для EN — posted_tg_en
+        flag_key = "posted_tg" if is_main_channel else f"posted_tg_{channel.strip('@')}"
+        if event.get(flag_key) or event.get("posted_tg"):
             continue
 
         text = fmt(event)
-        photo_path = event.get("photo_path")
+        photo_url = event.get("photo_url", "")
 
-        if photo_path and os.path.exists(photo_path):
-            ok = send_photo_with_caption(photo_path, text, channel)
-            os.remove(photo_path)
+        if photo_url and photo_url.startswith("http"):
+            ok = send_photo_url(photo_url, text, channel)
             if not ok:
                 ok = send_text(text, channel)
         else:
             ok = send_text(text, channel)
 
         if ok:
-            posted.add(eid)
             new_count += 1
             print(f"[poster/{channel}] Опубликовано: {event.get('title', eid)[:50]}")
+            # Ставим флаг в Firebase
+            if mark_fb:
+                try:
+                    mark_fb(eid, "tg")
+                    event["posted_tg"] = True  # обновляем локально чтобы не дублировать в этой сессии
+                except Exception as e:
+                    print(f"[poster] mark_posted error: {e}")
             time.sleep(3)
         else:
             print(f"[poster/{channel}] Ошибка: {event.get('title', eid)[:50]}")
 
-    save_posted_ids(posted, posted_file)
     print(f"[poster/{channel}] Новых постов: {new_count}")

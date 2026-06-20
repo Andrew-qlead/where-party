@@ -123,8 +123,20 @@ def get_unposted(platform: str = "tg", limit: int = 50) -> list[dict]:
         )
         return [{"id": d.id, **d.to_dict()} for d in docs]
     except Exception as ex:
-        print(f"[firebase] get_unposted error: {ex}")
-        return []
+        # Firestore требует составной индекс для where+orderBy — fallback без сортировки
+        print(f"[firebase] get_unposted (with order) error: {ex} — trying without orderBy")
+        try:
+            db = get_db()
+            docs = (
+                db.collection("events")
+                .where(f"posted_{platform}", "==", False)
+                .limit(limit)
+                .stream()
+            )
+            return [{"id": d.id, **d.to_dict()} for d in docs]
+        except Exception as ex2:
+            print(f"[firebase] get_unposted fallback error: {ex2}")
+            return []
 
 
 def cleanup_old_events(days: int = 30):

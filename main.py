@@ -84,42 +84,55 @@ def main():
         cleanup_old_events(days=30)
         new_in_db = save_events_batch(all_events)
         print(f"[firebase] Новых в базе: {new_in_db}")
+
+        # Берём непосланные события прямо из Firebase — надёжнее локального JSON
+        # (Railway эфемерен, JSON теряется при перезапуске)
+        from db.firebase import get_unposted
+        events_to_post = get_unposted(platform="tg", limit=30)
+        print(f"[firebase] К публикации в TG: {len(events_to_post)}")
     else:
         print("[firebase] serviceAccount.json не найден — пропускаем БД")
+        events_to_post = all_events
 
     # TG — русский канал
-    post_new_events(all_events)
+    post_new_events(events_to_post)
 
-    # TG — английский канал (если задан)
-    if TG_CHANNEL_EN:
-        print(f"[tg-en] Постим в английский канал {TG_CHANNEL_EN}")
+    # TG — английский канал (если задан) — тоже из Firebase
+    if TG_CHANNEL_EN and USE_FIREBASE:
+        from db.firebase import get_unposted as _get_unposted_en
+        events_to_post_en = _get_unposted_en(platform="tg", limit=30)
+        print(f"[tg-en] Постим в английский канал {TG_CHANNEL_EN}: {len(events_to_post_en)}")
+        post_new_events(events_to_post_en, channel_override=TG_CHANNEL_EN, formatter=format_post_en)
+    elif TG_CHANNEL_EN:
         post_new_events(all_events, channel_override=TG_CHANNEL_EN, formatter=format_post_en)
 
-    # Threads — двуязычный постинг
+    # Threads — используем posted_threads из Firebase
     if USE_THREADS:
         print("[threads] Постим в Threads...")
-        from bot.poster import load_posted_ids, save_posted_ids
+        from db.firebase import get_unposted as _get_unposted_th, mark_posted as _mark_th
         from social.threads_poster import post_event_bilingual
-        posted = load_posted_ids("data/posted_threads.json")
-        new_posted = set()
-        for event in all_events:
+        import time as _time
+        threads_events = _get_unposted_th(platform="threads", limit=20) if USE_FIREBASE else all_events
+        for event in threads_events:
             eid = event.get("id")
-            if eid in posted:
-                continue
             ok = post_event_bilingual(event)
             if ok:
-                new_posted.add(eid)
                 print(f"[threads] Опубликовано: {event.get('title', '')[:50]}")
-                import time; time.sleep(15)
-        save_posted_ids(posted | new_posted, "data/posted_threads.json")
+                if USE_FIREBASE:
+                    try: _mark_th(eid, "threads")
+                    except Exception: pass
+                _time.sleep(15)
 
-    # Instagram
+    # Instagram — тоже через Firebase
     if USE_INSTAGRAM:
         print("[instagram] Постим в Instagram...")
-        from bot.poster import load_posted_ids, save_posted_ids
-        posted = load_posted_ids("data/posted_instagram.json")
-        new = post_events_to_instagram(all_events, format_post_en, posted)
-        save_posted_ids(posted | new, "data/posted_instagram.json")
+        from db.firebase import get_unposted as _get_unposted_ig, mark_posted as _mark_ig
+        ig_events = _get_unposted_ig(platform="instagram", limit=10) if USE_FIREBASE else all_events
+        new = post_events_to_instagram(ig_events, format_post_en, set())
+        if USE_FIREBASE:
+            for eid in new:
+                try: _mark_ig(eid, "instagram")
+                except Exception: pass
 
     print("=== Готово ===")
 
