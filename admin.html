@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WR PT — Admin</title>
+<script src="firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, collection, query, where, orderBy, getDocs,
+    doc, setDoc, deleteDoc, updateDoc, serverTimestamp, addDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const db = getFirestore(initializeApp(window.FIREBASE_CONFIG));
+
+  const slugify = s => s.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40);
+
+  window._admin = {
+    async loadSubmissions() {
+      const q = query(collection(db, "submissions"), where("approved", "==", false), orderBy("created_at", "asc"));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+    },
+
+    async approve(sub) {
+      const eid = `submit_${slugify(sub.title || "x")}_${Date.now()}`;
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      let dateStr = sub.date || "";
+      // если дата в ISO — переводим в "20 Jun 2026"
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        const d = new Date(dateStr);
+        dateStr = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+      }
+      const event = {
+        id: eid,
+        title: sub.title || "",
+        title_en: sub.title_en || sub.title || "",
+        full_text: sub.full_text || "",
+        full_text_en: sub.full_text_en || sub.full_text || "",
+        date: dateStr,
+        venue: sub.venue || "",
+        city: sub.city || "Cyprus",
+        url: sub.url || "",
+        price: sub.price || "",
+        photo_url: sub.photo_url || "",
+        category: sub.category || "other",
+        source: "user_submission",
+        created_at: new Date().toISOString(),
+        posted_tg: false,
+        posted_threads: false,
+        posted_instagram: false,
+      };
+      await setDoc(doc(db, "events", eid), event);
+      await updateDoc(doc(db, "submissions", sub._docId), { approved: true, event_id: eid });
+      return eid;
+    },
+
+    async reject(sub) {
+      await deleteDoc(doc(db, "submissions", sub._docId));
+    },
+
+    async loadRecent() {
+      const q = query(collection(db, "events"), orderBy("created_at", "desc"));
+      const snap = await getDocs(q);
+      return snap.docs.slice(0, 50).map(d => ({ _docId: d.id, ...d.data() }));
+    },
+
+    async deleteEvent(docId) {
+      await deleteDoc(doc(db, "events", docId));
+    },
+  };
+
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #111108;
+  --surface: #1e1d10;
+  --card: #252414;
+  --gold: #C9A84C;
+  --gold-dim: #C9A84C22;
+  --limestone: #F2EDE2;
+  --muted: #F2EDE266;
+  --border: #C9A84C1a;
+  --green: #4caf72;
+  --red: #c04a3a;
+  --blue: #4a8bc0;
+}
+body { background: var(--bg); color: var(--limestone); font-family: -apple-system, sans-serif; min-height: 100vh; }
+
+/* AUTH */
+#auth-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 24px;
+}
+.auth-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 40px 32px; width: 100%; max-width: 360px; text-align: center;
+}
+.auth-logo { font-family: Georgia, serif; font-size: 28px; letter-spacing: 4px; margin-bottom: 8px; }
+.auth-logo span { color: var(--gold); }
+.auth-sub { font-size: 12px; color: var(--muted); letter-spacing: 2px; margin-bottom: 32px; }
+.auth-input {
+  width: 100%; background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px; color: var(--limestone);
+  font-size: 15px; outline: none; text-align: center; letter-spacing: 4px;
+  margin-bottom: 16px;
+}
+.auth-btn {
+  width: 100%; background: var(--gold); color: #1a1a0a;
+  border: none; border-radius: 8px; padding: 13px;
+  font-size: 13px; font-weight: 700; letter-spacing: 2px; cursor: pointer;
+}
+.auth-error { font-size: 12px; color: var(--red); margin-top: 12px; display: none; }
+
+/* APP */
+#app { display: none; }
+
+/* TOPBAR */
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px; position: sticky; top: 0; z-index: 10;
+}
+.topbar-logo { font-family: Georgia, serif; font-size: 16px; letter-spacing: 3px; }
+.topbar-logo span { color: var(--gold); }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.badge {
+  background: var(--red); color: #fff; border-radius: 20px;
+  padding: 2px 10px; font-size: 12px; font-weight: 700;
+}
+.badge.zero { background: var(--muted); }
+.logout-btn { font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; }
+.logout-btn:hover { color: var(--gold); }
+
+/* TABS */
+.tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); }
+.tab {
+  padding: 14px 24px; font-size: 13px; letter-spacing: 1px; cursor: pointer;
+  color: var(--muted); border-bottom: 2px solid transparent; transition: all .2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* MAIN */
+.main { padding: 24px; max-width: 900px; margin: 0 auto; }
+
+/* SUBMISSIONS */
+.sub-list { display: flex; flex-direction: column; gap: 16px; }
+.sub-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+  transition: border-color .2s;
+}
+.sub-card:hover { border-color: var(--gold-dim); }
+.sub-card-header {
+  padding: 16px 20px; display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 12px;
+}
+.sub-title { font-family: Georgia, serif; font-size: 18px; line-height: 1.3; margin-bottom: 6px; }
+.sub-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.meta-chip {
+  font-size: 11px; color: var(--muted); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px;
+}
+.meta-chip.cat { color: var(--gold); border-color: var(--gold-dim); }
+.sub-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.btn { border: none; border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: opacity .2s; white-space: nowrap; }
+.btn:hover { opacity: 0.85; }
+.btn-approve { background: var(--green); color: #fff; }
+.btn-reject { background: var(--red); color: #fff; }
+.btn-delete { background: var(--red); color: #fff; }
+.btn-sm { padding: 6px 12px; font-size: 11px; }
+
+.sub-body { padding: 0 20px 16px; font-size: 13px; color: var(--muted); line-height: 1.6; border-top: 1px solid var(--border); padding-top: 14px; }
+.sub-body a { color: var(--gold); word-break: break-all; }
+.sub-photo { width: 100%; max-height: 200px; object-fit: cover; display: block; border-radius: 0; }
+.sub-contact { font-size: 11px; color: var(--muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+
+/* EVENTS TABLE */
+.event-list { display: flex; flex-direction: column; gap: 10px; }
+.event-row {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.event-row-img { width: 52px; height: 52px; object-fit: cover; border-radius: 6px; flex-shrink: 0; background: var(--surface); }
+.event-row-info { flex: 1; min-width: 0; }
+.event-row-title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+.event-row-meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.flag { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.flag-posted { background: #4caf7222; color: var(--green); }
+.flag-pending { background: #c04a3a22; color: var(--red); }
+
+/* EMPTY / LOADING */
+.empty { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 14px; }
+.spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; margin: 40px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #fff; padding: 10px 24px;
+  border-radius: 8px; font-size: 13px; font-weight: 600;
+  opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 100;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+.toast.error { background: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">WR P<span>T</span></div>
+    <div class="auth-sub">ADMIN PANEL</div>
+    <input class="auth-input" type="password" id="pass-input" placeholder="••••••••" autocomplete="current-password">
+    <button class="auth-btn" onclick="doLogin()">ВОЙТИ</button>
+    <div class="auth-error" id="auth-error">Неверный пароль</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">WR P<span>T</span> · ADMIN</div>
+    <div class="topbar-right">
+      <span id="sub-badge" class="badge zero">0 заявок</span>
+      <button class="logout-btn" onclick="logout()">выйти</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-subs" onclick="showTab('subs')">
+      📥 Заявки <span id="tab-badge"></span>
+    </div>
+    <div class="tab" id="tab-events" onclick="showTab('events')">
+      📋 События
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="pane-subs">
+      <div class="spinner" id="subs-spinner"></div>
+      <div class="sub-list" id="sub-list"></div>
+    </div>
+    <div id="pane-events" style="display:none">
+      <div class="spinner" id="events-spinner"></div>
+      <div class="event-list" id="event-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Пароль — хранится в localStorage, задаётся один раз ───────────────────
+// Смени на свой. Можно сделать сложнее, но для одного человека хватит.
+const ADMIN_PASS = "wrpt2024admin";
+
+function doLogin() {
+  const val = document.getElementById("pass-input").value;
+  if (val === ADMIN_PASS) {
+    localStorage.setItem("wrpt_admin", "1");
+    showApp();
+  } else {
+    document.getElementById("auth-error").style.display = "block";
+    document.getElementById("pass-input").value = "";
+  }
+}
+document.getElementById("pass-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") doLogin();
+});
+
+function logout() {
+  localStorage.removeItem("wrpt_admin");
+  location.reload();
+}
+
+function showApp() {
+  document.getElementById("auth-screen").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  waitFirebase();
+}
+
+if (localStorage.getItem("wrpt_admin")) showApp();
+
+// ── Firebase ───────────────────────────────────────────────────────────────
+let fbReady = false;
+window.addEventListener("firebase-ready", () => { fbReady = true; });
+
+function waitFirebase() {
+  if (fbReady) { loadSubs(); return; }
+  setTimeout(waitFirebase, 100);
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, isError = false) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (isError ? " error" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+let eventsLoaded = false;
+function showTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("tab-" + tab).classList.add("active");
+  document.getElementById("pane-subs").style.display = tab === "subs" ? "" : "none";
+  document.getElementById("pane-events").style.display = tab === "events" ? "" : "none";
+  if (tab === "events" && !eventsLoaded) loadEvents();
+}
+
+// ── SUBMISSIONS ────────────────────────────────────────────────────────────
+let subs = [];
+
+async function loadSubs() {
+  document.getElementById("subs-spinner").style.display = "block";
+  document.getElementById("sub-list").innerHTML = "";
+  try {
+    subs = await window._admin.loadSubmissions();
+  } catch(e) {
+    document.getElementById("subs-spinner").style.display = "none";
+    document.getElementById("sub-list").innerHTML = `<div class="empty">Ошибка: ${e.message}</div>`;
+    return;
+  }
+  document.getElementById("subs-spinner").style.display = "none";
+  updateBadge();
+  renderSubs();
+}
+
+function updateBadge() {
+  const n = subs.length;
+  const badge = document.getElementById("sub-badge");
+  badge.textContent = n + (n === 1 ? " заявка" : n > 4 ? " заявок" : " заявки");
+  badge.className = "badge" + (n === 0 ? " zero" : "");
+  const tb = document.getElementById("tab-badge");
+  tb.textContent = n > 0 ? `(${n})` : "";
+}
+
+const CAT_LABEL = {
+  music:"🎶 Музыка", nightlife:"🎉 Вечеринки", art:"🎨 Арт", food:"🍷 Еда",
+  networking:"🎤 Нетворкинг", culture:"📖 Культура", outdoor:"🌊 Природа",
+  sport:"🏃 Спорт", kids:"👶 Дети", other:"📌 Другое"
+};
+
+function renderSubs() {
+  const el = document.getElementById("sub-list");
+  if (!subs.length) {
+    el.innerHTML = `<div class="empty">🎉 Нет новых заявок</div>`;
+    return;
+  }
+  el.innerHTML = subs.map((s, i) => {
+    const created = s.created_at?.toDate ? s.created_at.toDate().toLocaleString("ru") : (s.created_at || "");
+    const photo = s.photo_url ? `<img class="sub-photo" src="${esc(s.photo_url)}" onerror="this.style.display='none'">` : "";
+    return `
+    <div class="sub-card" id="sub-card-${i}">
+      ${photo}
+      <div class="sub-card-header">
+        <div style="flex:1;min-width:0">
+          <div class="sub-title">${esc(s.title || "—")}</div>
+          <div class="sub-meta">
+            ${s.date ? `<span class="meta-chip">📅 ${esc(s.date)}</span>` : ""}
+            ${s.time ? `<span class="meta-chip">🕐 ${esc(s.time)}</span>` : ""}
+            ${s.city ? `<span class="meta-chip">📍 ${esc(s.city)}</span>` : ""}
+            ${s.venue ? `<span class="meta-chip">🏛 ${esc(s.venue)}</span>` : ""}
+            ${s.price ? `<span class="meta-chip">💰 ${esc(s.price)}</span>` : ""}
+            ${s.category ? `<span class="meta-chip cat">${CAT_LABEL[s.category]||s.category}</span>` : ""}
+          </div>
+        </div>
+        <div class="sub-actions">
+          <button class="btn btn-approve" onclick="approveSub(${i})">✓ Одобрить</button>
+          <button class="btn btn-reject" onclick="rejectSub(${i})">✕ Удалить</button>
+        </div>
+      </div>
+      ${s.full_text || s.url || s.contact ? `
+      <div class="sub-body">
+        ${s.full_text ? `<div style="margin-bottom:10px">${esc(s.full_text).slice(0,400)}${s.full_text.length>400?"…":""}</div>` : ""}
+        ${s.url ? `<div>🔗 <a href="${esc(s.url)}" target="_blank">${esc(s.url)}</a></div>` : ""}
+        ${s.contact ? `<div class="sub-contact">Контакт: ${esc(s.contact)} · Получено: ${created}</div>` : `<div class="sub-contact">Получено: ${created}</div>`}
+      </div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+async function approveSub(i) {
+  const s = subs[i];
+  const card = document.getElementById(`sub-card-${i}`);
+  card.style.opacity = "0.5";
+  card.style.pointerEvents = "none";
+  try {
+    const eid = await window._admin.approve(s);
+    subs.splice(i, 1);
+    updateBadge();
+    renderSubs();
+    showToast(`✓ Одобрено → ${eid}`);
+    eventsLoaded = false; // сбросим кеш событий
+  } catch(e) {
+    card.style.opacity = "";
+    card.style.pointerEvents = "";
+    showToast("Ошибка: " + e.message, true);
+  }
+}
+
+async function rejectSub(i) {
+  if (!confirm(`Удалить заявку "${subs[i].title}"?`)) return;
+  const card = document.getElementById(`sub-card-${i}`);
+  card.style.opacity = "0.5";
+  card.style.pointerEvents = "none";
+  try {
+    await window._admin.reject(subs[i]);
+    subs.splice(i, 1);
+    updateBadge();
+    renderSubs();
+    showToast("Заявка удалена");
+  } catch(e) {
+    card.style.opacity = "";
+    card.style.pointerEvents = "";
+    showToast("Ошибка: " + e.message, true);
+  }
+}
+
+// ── EVENTS ─────────────────────────────────────────────────────────────────
+let events = [];
+
+async function loadEvents() {
+  document.getElementById("events-spinner").style.display = "block";
+  document.getElementById("event-list").innerHTML = "";
+  try {
+    events = await window._admin.loadRecent();
+    eventsLoaded = true;
+  } catch(e) {
+    document.getElementById("events-spinner").style.display = "none";
+    document.getElementById("event-list").innerHTML = `<div class="empty">Ошибка: ${e.message}</div>`;
+    return;
+  }
+  document.getElementById("events-spinner").style.display = "none";
+  renderEvents();
+}
+
+function renderEvents() {
+  const el = document.getElementById("event-list");
+  if (!events.length) { el.innerHTML = `<div class="empty">Нет событий</div>`; return; }
+  el.innerHTML = events.map((e, i) => {
+    const cat = CAT_LABEL[e.category] || e.category || "—";
+    const tgFlag = e.posted_tg
+      ? `<span class="flag flag-posted">TG ✓</span>`
+      : `<span class="flag flag-pending">TG ✗</span>`;
+    const img = e.photo_url
+      ? `<img class="event-row-img" src="${esc(e.photo_url)}" onerror="this.style.background='var(--surface)';this.style.visibility='hidden'">`
+      : `<div class="event-row-img"></div>`;
+    return `
+    <div class="event-row">
+      ${img}
+      <div class="event-row-info">
+        <div class="event-row-title">${esc(e.title || e.id)}</div>
+        <div class="event-row-meta">
+          <span>${e.date || "—"}</span>
+          <span>${e.city || "—"}</span>
+          <span>${cat}</span>
+          ${tgFlag}
+          ${e.source === "user_submission" ? `<span class="flag" style="background:#4a8bc022;color:var(--blue)">USER</span>` : ""}
+        </div>
+      </div>
+      <button class="btn btn-delete btn-sm" onclick="deleteEvent(${i})">✕</button>
+    </div>`;
+  }).join("");
+}
+
+async function deleteEvent(i) {
+  const e = events[i];
+  if (!confirm(`Удалить событие "${e.title || e.id}"?`)) return;
+  try {
+    await window._admin.deleteEvent(e._docId);
+    events.splice(i, 1);
+    renderEvents();
+    showToast("Событие удалено");
+  } catch(err) {
+    showToast("Ошибка: " + err.message, true);
+  }
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+</script>
+</body>
+</html>
