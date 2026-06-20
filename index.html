@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>WR PT — Cyprus Events</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="firebase-config.js"></script>
 <script type="module">
@@ -42,125 +44,93 @@ html, body { height: 100%; background: var(--espresso2); color: var(--limestone)
   padding: 14px 16px 10px;
 }
 .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.logo {
-  font-family: 'EB Garamond', 'Palatino Linotype', Georgia, serif;
-  font-size: 22px; letter-spacing: 4px; line-height: 1;
-}
+.logo { font-family: 'EB Garamond', Georgia, serif; font-size: 22px; letter-spacing: 4px; line-height: 1; }
 .logo span { color: var(--gold); }
 .logo-sub { font-size: 8px; letter-spacing: 4px; color: var(--muted); font-family: sans-serif; margin-top: 2px; }
 
 /* LANG TOGGLE */
-.lang-toggle {
-  display: flex; gap: 2px;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 20px; padding: 3px;
-}
-.lang-btn {
-  padding: 4px 12px; border-radius: 16px; border: none;
-  font-size: 11px; letter-spacing: 1px; font-family: sans-serif;
-  cursor: pointer; transition: all .2s;
-  background: transparent; color: var(--muted);
-}
+.lang-toggle { display: flex; gap: 2px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px; }
+.lang-btn { padding: 4px 12px; border-radius: 16px; border: none; font-size: 11px; letter-spacing: 1px; font-family: sans-serif; cursor: pointer; transition: all .2s; background: transparent; color: var(--muted); }
 .lang-btn.active { background: var(--gold); color: var(--espresso); font-weight: 600; }
 
 /* SEARCH */
 .search-wrap { position: relative; margin-bottom: 10px; }
-.search {
-  width: 100%; background: var(--card-bg);
-  border: 1px solid var(--border); border-radius: 8px;
-  padding: 9px 14px 9px 36px;
-  color: var(--limestone); font-size: 13px; outline: none;
-}
+.search { width: 100%; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px 9px 36px; color: var(--limestone); font-size: 13px; outline: none; }
 .search::placeholder { color: var(--muted); }
 .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
 
 /* CATEGORIES */
 .cats { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .cats::-webkit-scrollbar { display: none; }
-.cat-btn {
-  flex-shrink: 0; padding: 5px 12px;
-  border-radius: 20px; border: 1px solid var(--border);
-  background: transparent; color: var(--muted);
-  font-size: 11px; font-family: sans-serif; letter-spacing: .5px;
-  cursor: pointer; transition: all .2s; white-space: nowrap;
-}
+.cat-btn { flex-shrink: 0; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 11px; font-family: sans-serif; letter-spacing: .5px; cursor: pointer; transition: all .2s; white-space: nowrap; }
 .cat-btn.active { background: var(--gold); border-color: var(--gold); color: var(--espresso); font-weight: 600; }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
 
 /* EVENTS */
 .events { padding: 12px 16px 90px; display: flex; flex-direction: column; gap: 10px; }
 
 /* CARD */
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px; overflow: hidden;
-  cursor: pointer; transition: border-color .2s;
-  position: relative;
-}
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: border-color .2s; position: relative; }
 .card:active { opacity: 0.85; }
 .card:hover { border-color: var(--gold-dim); }
-
-.card-cat-bar {
-  width: 3px; position: absolute; left: 0; top: 0; bottom: 0;
-  background: var(--gold);
-}
+.card-cat-bar { width: 3px; position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); }
 .card-body { padding: 14px 14px 14px 18px; }
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
 .card-cat-label { font-family: sans-serif; font-size: 9px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; }
 .card-emoji { font-size: 18px; flex-shrink: 0; }
-.card-title {
-  font-family: 'EB Garamond', 'Palatino Linotype', Georgia, serif;
-  font-size: 17px; line-height: 1.3; color: var(--limestone); margin-bottom: 10px;
-}
+.card-title { font-family: 'EB Garamond', Georgia, serif; font-size: 17px; line-height: 1.3; color: var(--limestone); margin-bottom: 10px; }
 .card-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .meta-item { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; font-family: sans-serif; }
 .meta-item strong { color: var(--gold); }
 .card-footer { border-top: 1px solid var(--border); padding: 10px 14px 10px 18px; }
-.btn-ticket {
-  display: inline-block; width: 100%;
-  background: var(--gold); color: var(--espresso);
-  border: none; border-radius: 8px;
-  padding: 9px 16px; font-size: 11px; letter-spacing: 2px;
-  font-family: sans-serif; font-weight: 700; text-align: center;
-  cursor: pointer; text-decoration: none;
-}
+.btn-ticket { display: inline-block; width: 100%; background: var(--gold); color: var(--espresso); border: none; border-radius: 8px; padding: 9px 16px; font-size: 11px; letter-spacing: 2px; font-family: sans-serif; font-weight: 700; text-align: center; cursor: pointer; text-decoration: none; }
 
 /* STATES */
-.loading, .empty {
-  text-align: center; padding: 60px 20px;
-  color: var(--muted); font-family: sans-serif; font-size: 13px;
-}
-.spinner {
-  width: 28px; height: 28px;
-  border: 2px solid var(--border);
-  border-top-color: var(--gold);
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
-  margin: 0 auto 16px;
-}
+.loading, .empty { text-align: center; padding: 60px 20px; color: var(--muted); font-family: sans-serif; font-size: 13px; }
+.spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* BOTTOM NAV */
-.bottom-nav {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: var(--espresso);
-  border-top: 1px solid var(--border);
-  display: flex;
-  padding: 8px 0 max(env(safe-area-inset-bottom), 8px);
-}
-.nav-item {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; gap: 3px;
-  font-size: 9px; letter-spacing: 1px;
-  color: var(--muted); font-family: sans-serif;
-  cursor: pointer; padding: 4px 0;
-}
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--espresso); border-top: 1px solid var(--border); display: flex; padding: 8px 0 max(env(safe-area-inset-bottom), 8px); z-index: 20; }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9px; letter-spacing: 1px; color: var(--muted); font-family: sans-serif; cursor: pointer; padding: 4px 0; }
 .nav-item.active { color: var(--gold); }
 .nav-icon { font-size: 18px; }
 
-/* DIVIDER LINE */
-.gold-line { width: 32px; height: 1px; background: var(--gold-dim); margin: 0 auto 16px; }
+/* MAP PAGE */
+.map-page { padding: 0; height: calc(100vh - 130px); position: relative; }
+#leaflet-map { width: 100%; height: 100%; z-index: 1; }
+.map-info { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--espresso); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 11px; color: var(--muted); font-family: sans-serif; white-space: nowrap; }
+
+/* SOON PAGE */
+.soon-page { padding: 12px 16px 90px; display: flex; flex-direction: column; gap: 10px; }
+
+/* EVENT MODAL */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; align-items: flex-end; }
+.modal {
+  background: var(--espresso); width: 100%;
+  border-radius: 20px 20px 0 0;
+  max-height: 85vh; overflow-y: auto;
+  padding: 0 0 max(env(safe-area-inset-bottom), 20px);
+  animation: slideUp .25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
+.modal-header { padding: 16px 20px 0; }
+.modal-cat { font-size: 9px; letter-spacing: 2px; color: var(--gold); font-family: sans-serif; text-transform: uppercase; margin-bottom: 8px; }
+.modal-title { font-family: 'EB Garamond', Georgia, serif; font-size: 22px; line-height: 1.3; color: var(--limestone); margin-bottom: 14px; }
+.modal-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.modal-meta .meta-item { font-size: 13px; }
+.modal-divider { height: 1px; background: var(--border); margin: 0 20px 16px; }
+.modal-body { padding: 0 20px; font-size: 14px; line-height: 1.7; color: var(--limestone-dim); white-space: pre-wrap; }
+.modal-footer { padding: 20px; }
+.modal-close { position: absolute; top: 16px; right: 16px; background: var(--card-bg); border: 1px solid var(--border); color: var(--muted); border-radius: 50%; width: 32px; height: 32px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 </style>
 </head>
 <body>
@@ -176,37 +146,71 @@ html, body { height: 100%; background: var(--espresso2); color: var(--limestone)
       <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
     </div>
   </div>
-  <div class="search-wrap">
+  <div class="search-wrap" id="search-wrap">
     <span class="search-icon">⌕</span>
-    <input class="search" type="text" id="search" placeholder="Search events...">
+    <input class="search" type="text" id="search" placeholder="Поиск событий...">
   </div>
   <div class="cats" id="cats"></div>
 </div>
 
-<div class="events" id="events">
-  <div class="loading"><div class="spinner"></div><div id="loading-text">Loading...</div></div>
+<!-- PAGE: EVENTS -->
+<div class="page active" id="page-events">
+  <div class="events" id="events">
+    <div class="loading"><div class="spinner"></div><div id="loading-text">Загружаем события...</div></div>
+  </div>
 </div>
 
+<!-- PAGE: SOON -->
+<div class="page" id="page-soon">
+  <div class="soon-page" id="soon-list">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- PAGE: MAP -->
+<div class="page" id="page-map">
+  <div class="map-page">
+    <div class="map-info" id="map-info">📍 Кипр — события на карте</div>
+    <div id="leaflet-map"></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-  <div class="nav-item active">
+  <div class="nav-item active" id="nav-btn-events" onclick="showPage('events')">
     <div class="nav-icon">◈</div>
-    <span id="nav-home">Events</span>
+    <span id="nav-home">События</span>
   </div>
-  <div class="nav-item">
+  <div class="nav-item" id="nav-btn-soon" onclick="showPage('soon')">
     <div class="nav-icon">◷</div>
-    <span id="nav-soon">Soon</span>
+    <span id="nav-soon">Скоро</span>
   </div>
-  <div class="nav-item">
+  <div class="nav-item" id="nav-btn-map" onclick="showPage('map')">
     <div class="nav-icon">◎</div>
-    <span id="nav-map">Map</span>
+    <span id="nav-map">Карта</span>
   </div>
 </nav>
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal" style="position:relative">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-header">
+      <div class="modal-cat" id="modal-cat"></div>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-meta" id="modal-meta"></div>
+    </div>
+    <div class="modal-divider"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
 
 <script>
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
-// ── TRANSLATIONS ─────────────────────────────────────────────
 const T = {
   ru: {
     search: "Поиск событий...",
@@ -214,6 +218,7 @@ const T = {
     empty: "Событий не найдено",
     tickets: "БИЛЕТЫ И ПОДРОБНОСТИ",
     navHome: "События", navSoon: "Скоро", navMap: "Карта",
+    soon: "Ближайшие события",
     cats: {
       all:"🌟 Все", nightlife:"🎉 Вечеринки", music:"🎶 Музыка",
       art:"🎨 Арт", food:"🍷 Еда & Вино", networking:"🎤 Нетворкинг",
@@ -226,6 +231,7 @@ const T = {
     empty: "No events found",
     tickets: "TICKETS & DETAILS",
     navHome: "Events", navSoon: "Soon", navMap: "Map",
+    soon: "Upcoming events",
     cats: {
       all:"🌟 All", nightlife:"🎉 Parties", music:"🎶 Music",
       art:"🎨 Art", food:"🍷 Food & Wine", networking:"🎤 Networking",
@@ -234,39 +240,109 @@ const T = {
   }
 };
 
-const CAT_EMOJI = {
-  nightlife:"🎉", music:"🎶", art:"🎨", food:"🍷",
-  networking:"🎤", culture:"📖", outdoor:"🌊", sport:"🏃", kids:"👶", other:"📌"
-};
-
-const CAT_COLOR = {
-  nightlife:"#C04A26", music:"#C9A84C", art:"#6F7A3B", food:"#C9A84C",
-  networking:"#C04A26", culture:"#6F7A3B", outdoor:"#6F7A3B", sport:"#C04A26",
-  kids:"#C9A84C", other:"#C9A84C"
-};
+const CAT_EMOJI = { nightlife:"🎉", music:"🎶", art:"🎨", food:"🍷", networking:"🎤", culture:"📖", outdoor:"🌊", sport:"🏃", kids:"👶", other:"📌" };
+const CAT_COLOR = { nightlife:"#C04A26", music:"#C9A84C", art:"#6F7A3B", food:"#C9A84C", networking:"#C04A26", culture:"#6F7A3B", outdoor:"#6F7A3B", sport:"#C04A26", kids:"#C9A84C", other:"#C9A84C" };
 
 let lang = "ru";
 let currentCat = "all";
 let allEvents = [];
 let searchQuery = "";
 let fbReady = false;
+let currentPage = "events";
 
+// ── LANG ──────────────────────────────────────────────────────
 function setLang(l) {
   lang = l;
   document.querySelectorAll(".lang-btn").forEach(b => b.classList.toggle("active", b.dataset.lang === l));
   document.getElementById("search").placeholder = T[l].search;
-  document.getElementById("loading-text").textContent = T[l].loading;
+  document.getElementById("loading-text") && (document.getElementById("loading-text").textContent = T[l].loading);
   document.getElementById("nav-home").textContent = T[l].navHome;
   document.getElementById("nav-soon").textContent = T[l].navSoon;
   document.getElementById("nav-map").textContent = T[l].navMap;
   renderCats();
   render();
+  if (leafletMap) updateMapMarkers();
 }
 
+// ── MAP ───────────────────────────────────────────────────────
+let leafletMap = null;
+const CITY_COORDS = {
+  "Limassol": [34.6841, 33.0379], "Nicosia": [35.1856, 33.3823],
+  "Larnaca": [34.9009, 33.6281], "Paphos": [34.7754, 32.4242],
+  "Famagusta": [35.1264, 33.9497], "Ayia Napa": [34.9877, 33.9879],
+  "Protaras": [35.0126, 34.0510], "Limassol": [34.6841, 33.0379],
+  "Лимасол": [34.6841, 33.0379], "Никосия": [35.1856, 33.3823],
+  "Ларнака": [34.9009, 33.6281], "Пафос": [34.7754, 32.4242],
+  "Пила": [34.9009, 33.6281],
+};
+
+function initMap() {
+  if (leafletMap) return;
+  leafletMap = L.map("leaflet-map", { zoomControl: true }).setView([34.9, 33.1], 9);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "© OpenStreetMap",
+    maxZoom: 18,
+  }).addTo(leafletMap);
+  updateMapMarkers();
+}
+
+function updateMapMarkers() {
+  if (!leafletMap) return;
+  leafletMap.eachLayer(l => { if (l instanceof L.Marker) leafletMap.removeLayer(l); });
+
+  let placed = 0;
+  allEvents.forEach((e, idx) => {
+    const city = e.city || e.venue || "";
+    let coords = null;
+    for (const [name, c] of Object.entries(CITY_COORDS)) {
+      if (city.toLowerCase().includes(name.toLowerCase())) { coords = c; break; }
+    }
+    if (!coords) return;
+
+    const cat = e.category || "other";
+    const emoji = CAT_EMOJI[cat] || "📌";
+    const icon = L.divIcon({
+      html: `<div style="font-size:22px;line-height:1;">${emoji}</div>`,
+      className: "", iconSize: [28, 28], iconAnchor: [14, 14]
+    });
+
+    // небольшой jitter чтобы маркеры не накладывались
+    const jLat = coords[0] + (Math.random() - 0.5) * 0.01;
+    const jLng = coords[1] + (Math.random() - 0.5) * 0.01;
+
+    L.marker([jLat, jLng], { icon })
+      .addTo(leafletMap)
+      .bindPopup(`<b>${getTitle(e)}</b><br>${e.date||""}<br>${city}`, { maxWidth: 220 })
+      .on("click", () => openModal(idx));
+    placed++;
+  });
+
+  const info = document.getElementById("map-info");
+  if (info) info.textContent = `📍 ${lang==="ru"?"Событий на карте":"Events on map"}: ${placed}`;
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────
+function showPage(page) {
+  currentPage = page;
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  document.getElementById("page-" + page).classList.add("active");
+  document.getElementById("nav-btn-" + page).classList.add("active");
+
+  const searchWrap = document.getElementById("search-wrap");
+  const cats = document.getElementById("cats");
+  searchWrap.style.display = page === "events" ? "" : "none";
+  cats.style.display = page === "events" ? "" : "none";
+
+  if (page === "soon") renderSoon();
+  if (page === "map") { setTimeout(initMap, 50); }
+}
+
+// ── CATS ──────────────────────────────────────────────────────
 function renderCats() {
   const cats = ["all","nightlife","music","art","food","networking","culture","outdoor","sport","kids"];
   document.getElementById("cats").innerHTML = cats.map(c =>
-    `<button class="cat-btn${currentCat===c?' active':''}" data-cat="${c}" onclick="setCat('${c}')">${T[lang].cats[c]}</button>`
+    `<button class="cat-btn${currentCat===c?' active':''}" onclick="setCat('${c}')">${T[lang].cats[c]}</button>`
   ).join("");
 }
 
@@ -277,105 +353,176 @@ function setCat(cat) {
   loadEvents();
 }
 
-function escHtml(s) {
-  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+// ── UTILS ─────────────────────────────────────────────────────
+function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function getTitle(e) { return (lang === "en" && e.title_en) ? e.title_en : (e.title || ""); }
+function getBody(e) { return (lang === "en" && e.full_text_en) ? e.full_text_en : (e.full_text || ""); }
+
+const RU_MONTHS = { "января":0,"февраля":1,"марта":2,"апреля":3,"мая":4,"июня":5,"июля":6,"августа":7,"сентября":8,"октября":9,"ноября":10,"декабря":11 };
+function parseEventDate(str) {
+  if (!str) return null;
+  // ISO: 2026-06-15
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return new Date(str);
+  // "15 Jun 2026" or "15 June 2026"
+  const d1 = new Date(str);
+  if (!isNaN(d1)) return d1;
+  // "15 июня 2026" или "15 июня, пятница"
+  const m = str.match(/(\d{1,2})\s+([а-яёА-ЯЁ]+)\s*[,]?\s*(\d{4})?/);
+  if (m) {
+    const day = parseInt(m[1]);
+    const mon = RU_MONTHS[m[2].toLowerCase()];
+    const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
+    if (mon !== undefined) return new Date(year, mon, day);
+  }
+  return null;
 }
 
-function getTitle(e) {
-  if (lang === "en" && e.title_en) return e.title_en;
-  return e.title || "";
+function isExpired(e) {
+  const d = parseEventDate(e.date);
+  if (!d) return false; // нет даты — показываем
+  const today = new Date(); today.setHours(0,0,0,0);
+  return d < today;
 }
 
-function getBody(e) {
-  if (lang === "en" && e.full_text_en) return e.full_text_en;
-  return "";
+// ── RENDER CARDS ──────────────────────────────────────────────
+function buildCard(e, idx) {
+  const title = esc(getTitle(e));
+  const cat = e.category || "other";
+  const emoji = CAT_EMOJI[cat] || "📌";
+  const catColor = CAT_COLOR[cat] || "#C9A84C";
+  const catLabel = (T[lang].cats[cat] || "").replace(/^[^\s]+\s/, "");
+  const hasUrl = e.url && e.url.startsWith("http");
+
+  let meta = "";
+  if (e.date) meta += `<span class="meta-item">📅 ${esc(e.date)}</span>`;
+  if (e.venue) meta += `<span class="meta-item">📍 ${esc(e.venue)}</span>`;
+  else if (e.city && e.city !== "Cyprus") meta += `<span class="meta-item">📍 ${esc(e.city)}</span>`;
+  if (e.price) meta += `<span class="meta-item">💰 <strong>${esc(e.price)}</strong></span>`;
+
+  return `
+  <div class="card" onclick="openModal(${idx})">
+    <div class="card-cat-bar" style="background:${catColor};"></div>
+    <div class="card-body">
+      <div class="card-top">
+        <div class="card-cat-label">${catLabel}</div>
+        <div class="card-emoji">${emoji}</div>
+      </div>
+      <div class="card-title">${title}</div>
+      ${meta ? `<div class="card-meta">${meta}</div>` : ""}
+    </div>
+    ${hasUrl ? `<div class="card-footer"><button class="btn-ticket" onclick="event.stopPropagation();openUrl('${e.url.replace(/'/g,"\\'")}')">🎟 ${T[lang].tickets}</button></div>` : ""}
+  </div>`;
 }
 
 function render() {
   const q = searchQuery.toLowerCase();
   const filtered = allEvents.filter(e => {
+    if (isExpired(e)) return false;
     if (currentCat !== "all" && e.category !== currentCat) return false;
     if (!q) return true;
-    return ((e.title||"")+" "+(e.full_text||"")+" "+(e.venue||"")).toLowerCase().includes(q);
+    return ((e.title||"")+" "+(e.title_en||"")+" "+(e.full_text||"")+" "+(e.venue||"")).toLowerCase().includes(q);
   });
 
   const el = document.getElementById("events");
-  if (!filtered.length) {
-    el.innerHTML = `<div class="empty">◈<br><br>${T[lang].empty}</div>`;
-    return;
-  }
-
-  el.innerHTML = filtered.map(e => {
-    const title = escHtml(getTitle(e));
-    const cat = e.category || "other";
-    const emoji = CAT_EMOJI[cat] || "📌";
-    const catColor = CAT_COLOR[cat] || "#C9A84C";
-    const catLabel = (T[lang].cats[cat] || "").replace(/^[^\s]+\s/, ""); // без эмодзи
-    const hasUrl = e.url && e.url.startsWith("http");
-
-    let meta = "";
-    if (e.date) meta += `<span class="meta-item">📅 ${escHtml(e.date)}</span>`;
-    if (e.venue) meta += `<span class="meta-item">📍 ${escHtml(e.venue)}</span>`;
-    else if (e.city && e.city !== "Cyprus") meta += `<span class="meta-item">📍 ${escHtml(e.city)}</span>`;
-    if (e.price) meta += `<span class="meta-item">💰 <strong>${escHtml(e.price)}</strong></span>`;
-
-    return `
-    <div class="card" onclick="${hasUrl ? `openUrl('${e.url.replace(/'/g,"\\'")}')` : ''}">
-      <div class="card-cat-bar" style="background:${catColor};"></div>
-      <div class="card-body">
-        <div class="card-top">
-          <div class="card-cat-label">${catLabel}</div>
-          <div class="card-emoji">${emoji}</div>
-        </div>
-        <div class="card-title">${title}</div>
-        ${meta ? `<div class="card-meta">${meta}</div>` : ""}
-      </div>
-      ${hasUrl ? `<div class="card-footer"><button class="btn-ticket" onclick="event.stopPropagation();openUrl('${e.url.replace(/'/g,"\\'")}')">🎟 ${T[lang].tickets}</button></div>` : ""}
-    </div>`;
-  }).join("");
+  if (!filtered.length) { el.innerHTML = `<div class="empty">◈<br><br>${T[lang].empty}</div>`; return; }
+  el.innerHTML = filtered.map((e, i) => buildCard(e, allEvents.indexOf(e))).join("");
 }
 
+// ── SOON ──────────────────────────────────────────────────────
+function renderSoon() {
+  // Берём события отсортированные по дате (первые 20)
+  const el = document.getElementById("soon-list");
+  if (!allEvents.length) { el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`; return; }
+
+  // Парсим дату и сортируем
+  const now = new Date();
+  const withDate = allEvents.filter(e => e.date).map(e => {
+    const d = new Date(e.date);
+    return { ...e, _ts: isNaN(d) ? Infinity : d.getTime() };
+  }).filter(e => e._ts >= now.setHours(0,0,0,0) || e._ts === Infinity)
+    .sort((a, b) => a._ts - b._ts)
+    .slice(0, 30);
+
+  if (!withDate.length) { el.innerHTML = `<div class="empty">◈<br><br>${T[lang].empty}</div>`; return; }
+  el.innerHTML = withDate.map((e, i) => buildCard(e, allEvents.indexOf(e))).join("");
+}
+
+// ── MODAL ─────────────────────────────────────────────────────
+function openModal(idx) {
+  const e = allEvents[idx];
+  if (!e) return;
+
+  const cat = e.category || "other";
+  const emoji = CAT_EMOJI[cat] || "📌";
+  const catLabel = (T[lang].cats[cat] || "").replace(/^[^\s]+\s/, "");
+  const catColor = CAT_COLOR[cat] || "#C9A84C";
+  const hasUrl = e.url && e.url.startsWith("http");
+
+  document.getElementById("modal-cat").textContent = emoji + " " + catLabel;
+  document.getElementById("modal-cat").style.color = catColor;
+  document.getElementById("modal-title").textContent = getTitle(e);
+
+  let meta = "";
+  if (e.date) meta += `<span class="meta-item">📅 ${esc(e.date)}</span>`;
+  if (e.venue) meta += `<span class="meta-item">📍 ${esc(e.venue)}</span>`;
+  if (e.city && e.city !== "Cyprus") meta += `<span class="meta-item">🌍 ${esc(e.city)}</span>`;
+  if (e.price) meta += `<span class="meta-item">💰 <strong>${esc(e.price)}</strong></span>`;
+  document.getElementById("modal-meta").innerHTML = meta;
+
+  const body = getBody(e);
+  document.getElementById("modal-body").textContent = body;
+
+  document.getElementById("modal-footer").innerHTML = hasUrl
+    ? `<button class="btn-ticket" onclick="openUrl('${e.url.replace(/'/g,"\\'")}')">🎟 ${T[lang].tickets}</button>`
+    : "";
+
+  document.getElementById("modal-overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeModal(evt) {
+  if (evt && evt.target !== document.getElementById("modal-overlay") && !evt.target.classList.contains("modal-close")) return;
+  document.getElementById("modal-overlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+// ── URL ───────────────────────────────────────────────────────
 function openUrl(url) {
   if (tg) tg.openLink(url);
   else window.open(url, "_blank");
 }
 
+// ── FIREBASE ──────────────────────────────────────────────────
 async function loadEvents() {
   if (!fbReady) return;
   try {
     const { collection, query, where, orderBy, limit, getDocs } = window._fs;
     const db = window._db;
-    let q;
-    if (currentCat === "all") {
-      q = query(collection(db,"events"), orderBy("created_at","desc"), limit(100));
-    } else {
-      q = query(collection(db,"events"), where("category","==",currentCat), orderBy("created_at","desc"), limit(50));
-    }
+    // Всегда грузим все события — фильтр по категории на клиенте (нет нужды в составном индексе Firebase)
+    const q = query(collection(db,"events"), orderBy("created_at","desc"), limit(150));
     const snap = await getDocs(q);
     allEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render();
+    if (currentPage === "soon") renderSoon();
+    if (currentPage === "map") updateMapMarkers();
   } catch(e) {
     document.getElementById("events").innerHTML = `<div class="empty">⚠ ${e.message}</div>`;
   }
 }
 
-// Search
+// ── SEARCH ────────────────────────────────────────────────────
 let st;
 document.getElementById("search").addEventListener("input", e => {
   clearTimeout(st);
   st = setTimeout(() => { searchQuery = e.target.value; render(); }, 250);
 });
 
-// Init
+// ── INIT ──────────────────────────────────────────────────────
 setLang("ru");
 
 function waitForFirebase() {
-  if (window._db && window._fs) {
-    fbReady = true;
-    loadEvents();
-  } else {
-    setTimeout(waitForFirebase, 100);
-  }
+  if (window._db && window._fs) { fbReady = true; loadEvents(); }
+  else setTimeout(waitForFirebase, 100);
 }
 waitForFirebase();
 </script>
