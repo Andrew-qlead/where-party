@@ -153,25 +153,33 @@ def _extract_event_date(text: str, pub_date_str: str) -> str:
     """Пробуем вытащить реальную дату события из текста. Fallback — pubDate."""
     year = datetime.now().year
     # "19 June", "19 Jun", "June 19"
+    def _try_date(y, mo, d):
+        try:
+            return datetime(y, mo, d).strftime("%d %b %Y")
+        except ValueError:
+            return None
+
     m = re.search(r'\b(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b', text, re.I)
     if m:
         day, mon_s = int(m.group(1)), m.group(2).lower()
         mon = EN_MONTHS.get(mon_s)
         if mon:
-            return datetime(year, mon, day).strftime("%d %b %Y")
+            r = _try_date(year, mon, day)
+            if r: return r
     m = re.search(r'\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})\b', text, re.I)
     if m:
         mon_s, day = m.group(1).lower(), int(m.group(2))
         mon = EN_MONTHS.get(mon_s)
         if mon:
-            return datetime(year, mon, day).strftime("%d %b %Y")
-    # "19 июня"
+            r = _try_date(year, mon, day)
+            if r: return r
     m = re.search(r'\b(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\b', text, re.I)
     if m:
         day, mon_s = int(m.group(1)), m.group(2).lower()
         mon = RU_MONTHS_WEB.get(mon_s)
         if mon:
-            return datetime(year, mon, day).strftime("%d %b %Y")
+            r = _try_date(year, mon, day)
+            if r: return r
     return _parse_date(pub_date_str)
 
 

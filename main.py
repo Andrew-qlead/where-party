@@ -62,6 +62,32 @@ def main():
         all_events = [e for e in all_events if (k := (e.get("title") or "")[:50].lower().strip()) and not seen.add(k) and k not in seen]
     print(f"После дедупликации: {len(all_events)}")
 
+    # Фильтр по дате — только актуальные события (не старше 60 дней, не в прошлом)
+    from datetime import datetime, timedelta
+    import re as _re
+    now = datetime.now()
+    cutoff_past = now - timedelta(days=3)   # разрешаем события до 3 дней назад
+    cutoff_future = now + timedelta(days=90) # не дальше 90 дней вперёд
+
+    def _parse_event_date(d: str):
+        for fmt in ("%d %b %Y", "%Y-%m-%d", "%d.%m.%Y"):
+            try:
+                return datetime.strptime(d.strip(), fmt)
+            except Exception:
+                pass
+        return None
+
+    filtered = []
+    for event in all_events:
+        d = _parse_event_date(event.get("date", ""))
+        if d is None:
+            filtered.append(event)  # нет даты — берём (Telegram события часто без даты)
+        elif cutoff_past <= d <= cutoff_future:
+            filtered.append(event)
+
+    print(f"После фильтра по дате: {len(filtered)} (было {len(all_events)})")
+    all_events = filtered
+
     # Категоризация + извлечение города
     for event in all_events:
         event["category"] = categorize(event)
@@ -70,14 +96,14 @@ def main():
             if detected:
                 event["city"] = detected
 
-    # Перевод на английский (title_en, full_text_en)
+    # Перевод на английский — только для новых (без title_en)
     from bot.translator import translate_to_english
-    for event in all_events:
-        if not event.get("title_en"):
-            event["title_en"] = translate_to_english(event.get("title", ""))
-        if not event.get("full_text_en"):
-            src = event.get("full_text") or event.get("title") or ""
-            event["full_text_en"] = translate_to_english(src[:1000])
+    to_translate = [e for e in all_events if not e.get("title_en")]
+    print(f"[translate] Переводим {len(to_translate)} новых событий")
+    for event in to_translate:
+        event["title_en"] = translate_to_english(event.get("title", ""))
+        src = event.get("full_text") or event.get("title") or ""
+        event["full_text_en"] = translate_to_english(src[:500])
 
     # Firebase
     if USE_FIREBASE:
@@ -88,7 +114,7 @@ def main():
         # Берём непосланные события прямо из Firebase — надёжнее локального JSON
         # (Railway эфемерен, JSON теряется при перезапуске)
         from db.firebase import get_unposted
-        events_to_post = get_unposted(platform="tg", limit=30)
+        events_to_post = get_unposted(platform="tg", limit=5)
         print(f"[firebase] К публикации в TG: {len(events_to_post)}")
     else:
         print("[firebase] serviceAccount.json не найден — пропускаем БД")
@@ -100,7 +126,7 @@ def main():
     # TG — английский канал (отдельный флаг posted_tg_en)
     if TG_CHANNEL_EN and TG_CHANNEL_EN != os.environ.get("TELEGRAM_CHANNEL_ID", "") and USE_FIREBASE:
         from db.firebase import get_unposted as _get_unposted_en
-        events_to_post_en = _get_unposted_en(platform="tg_en", limit=30)
+        events_to_post_en = _get_unposted_en(platform="tg_en", limit=5)
         print(f"[tg-en] Постим в {TG_CHANNEL_EN}: {len(events_to_post_en)}")
         post_new_events(events_to_post_en, channel_override=TG_CHANNEL_EN, formatter=format_post_en)
 
@@ -110,7 +136,7 @@ def main():
         from db.firebase import get_unposted as _get_unposted_th, mark_posted as _mark_th
         from social.threads_poster import post_event_bilingual
         import time as _time
-        threads_events = _get_unposted_th(platform="threads", limit=20) if USE_FIREBASE else all_events
+        threads_events = _get_unposted_th(platform="threads", limit=3) if USE_FIREBASE else all_events
         for event in threads_events:
             eid = event.get("id")
             ok = post_event_bilingual(event)
