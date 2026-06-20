@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-INTERVAL_HOURS = 6
+INTERVAL_HOURS = 2
 
 def run_bot():
     print("[worker] Запускаю бот-сервер...", flush=True)
