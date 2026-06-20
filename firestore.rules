@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Публичные события — чтение для всех, удаление из админки
+    match /events/{id} {
+      allow read: if true;
+      allow delete: if true;
+      allow create, update: if false; // только через Railway (service account)
+    }
+
+    // Заявки — публичная запись (форма), публичное чтение (защита паролем на клиенте)
+    match /submissions/{id} {
+      allow read, write: if true;
+    }
+
+  }
+}
