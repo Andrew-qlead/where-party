@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Event — Where Party Cyprus</title>
+<meta name="description" content="Submit your event in Cyprus — it will appear in our Telegram channel, Mini App, and website for free.">
+<script src="firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  const db = getFirestore(initializeApp(window.FIREBASE_CONFIG));
+  window._submitEvent = async (data) => {
+    await addDoc(collection(db, "submissions"), {
+      ...data,
+      approved: false,
+      created_at: serverTimestamp(),
+    });
+  };
+  window.dispatchEvent(new Event("firebase-ready"));
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --espresso: #2B2A1A;
+  --espresso2: #1a1a10;
+  --gold: #C9A84C;
+  --limestone: #F2EDE2;
+  --muted: #F2EDE266;
+  --card-bg: #232215;
+  --border: #C9A84C22;
+  --terracotta: #C04A26;
+  --error: #e05555;
+}
+body { background: var(--espresso2); color: var(--limestone); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; }
+
+nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+.nav-logo { font-family: Georgia, serif; font-size: 18px; letter-spacing: 4px; text-decoration: none; color: var(--limestone); }
+.nav-logo span { color: var(--gold); }
+.back-link { font-size: 13px; color: var(--muted); text-decoration: none; }
+.back-link:hover { color: var(--gold); }
+
+.container { max-width: 600px; margin: 0 auto; padding: 40px 24px 80px; }
+
+.page-title { font-family: Georgia, serif; font-size: 28px; margin-bottom: 8px; }
+.page-sub { font-size: 14px; color: var(--muted); margin-bottom: 36px; }
+
+.form-group { margin-bottom: 20px; }
+label { display: block; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+label span.req { color: var(--gold); }
+input, textarea, select {
+  width: 100%; background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; color: var(--limestone);
+  font-size: 14px; font-family: inherit; outline: none;
+  transition: border-color .2s;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--gold); }
+input::placeholder, textarea::placeholder { color: var(--muted); }
+select option { background: var(--espresso); }
+textarea { resize: vertical; min-height: 100px; }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 500px) { .row { grid-template-columns: 1fr; } }
+
+.field-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.field-error { font-size: 11px; color: var(--error); margin-top: 6px; display: none; }
+
+.divider { height: 1px; background: var(--border); margin: 28px 0; }
+
+.submit-btn {
+  width: 100%; background: var(--gold); color: var(--espresso);
+  border: none; border-radius: 10px; padding: 15px;
+  font-size: 14px; font-weight: 700; letter-spacing: 2px;
+  cursor: pointer; transition: opacity .2s;
+}
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.submit-btn:hover:not(:disabled) { opacity: 0.9; }
+
+/* SUCCESS STATE */
+.success { display: none; text-align: center; padding: 60px 20px; }
+.success-icon { font-size: 48px; margin-bottom: 20px; }
+.success h2 { font-family: Georgia, serif; font-size: 24px; margin-bottom: 12px; }
+.success p { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+.success-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn-gold { background: var(--gold); color: var(--espresso); border: none; border-radius: 8px; padding: 12px 24px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-outline { background: transparent; color: var(--limestone); border: 1px solid var(--border); border-radius: 8px; padding: 12px 24px; font-size: 13px; cursor: pointer; }
+
+/* NOTE BOX */
+.note { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; }
+.note strong { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="landing.html">WR P<span>T</span></a>
+  <a class="back-link" href="landing.html">← Back to events</a>
+</nav>
+
+<div class="container">
+
+  <div id="form-wrap">
+    <h1 class="page-title">Add your event</h1>
+    <p class="page-sub">Free listing. We review submissions within 24 hours.</p>
+
+    <div class="note">
+      <strong>Free for everyone.</strong> Organisers, venues, communities — submit once and your event appears in our Telegram channel (@WrPtCy), Mini App, and website.
+    </div>
+
+    <form id="submit-form" novalidate>
+
+      <div class="form-group">
+        <label>Event title <span class="req">*</span></label>
+        <input type="text" id="f-title" placeholder="Jazz Evening at Garage Bar" maxlength="120" required>
+        <div class="field-error" id="err-title">Please enter a title</div>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>Date <span class="req">*</span></label>
+          <input type="date" id="f-date" required>
+          <div class="field-error" id="err-date">Please select a date</div>
+        </div>
+        <div class="form-group">
+          <label>Time</label>
+          <input type="time" id="f-time" placeholder="20:00">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>City <span class="req">*</span></label>
+          <select id="f-city" required>
+            <option value="">Select city</option>
+            <option value="Limassol">Limassol</option>
+            <option value="Nicosia">Nicosia</option>
+            <option value="Larnaca">Larnaca</option>
+            <option value="Paphos">Paphos</option>
+            <option value="Ayia Napa">Ayia Napa</option>
+            <option value="Protaras">Protaras</option>
+            <option value="Other">Other</option>
+          </select>
+          <div class="field-error" id="err-city">Please select a city</div>
+        </div>
+        <div class="form-group">
+          <label>Category <span class="req">*</span></label>
+          <select id="f-category" required>
+            <option value="">Select category</option>
+            <option value="music">🎶 Music</option>
+            <option value="nightlife">🎉 Nightlife / Parties</option>
+            <option value="art">🎨 Art & Exhibitions</option>
+            <option value="food">🍷 Food & Wine</option>
+            <option value="networking">🎤 Networking</option>
+            <option value="culture">📖 Culture</option>
+            <option value="outdoor">🌊 Outdoor & Nature</option>
+            <option value="sport">🏃 Sport</option>
+            <option value="kids">👶 Kids & Family</option>
+            <option value="other">📌 Other</option>
+          </select>
+          <div class="field-error" id="err-category">Please select a category</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Venue / Location</label>
+        <input type="text" id="f-venue" placeholder="Garage Bar, Limassol" maxlength="120">
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="f-description" placeholder="Tell us about the event — performers, programme, what to expect..." maxlength="1500"></textarea>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="form-group">
+        <label>Tickets / Event URL</label>
+        <input type="url" id="f-url" placeholder="https://..." >
+        <div class="field-hint">Link to tickets, Facebook event, or your website</div>
+      </div>
+
+      <div class="form-group">
+        <label>Price</label>
+        <input type="text" id="f-price" placeholder="€10 / Free" maxlength="60">
+      </div>
+
+      <div class="form-group">
+        <label>Photo URL</label>
+        <input type="url" id="f-photo" placeholder="https://...jpg">
+        <div class="field-hint">Direct link to event image (jpg/png). We'll fetch it automatically.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="form-group">
+        <label>Your contact (not published)</label>
+        <input type="text" id="f-contact" placeholder="@telegram or email" maxlength="120">
+        <div class="field-hint">In case we need to verify details. Never shared publicly.</div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">SUBMIT EVENT →</button>
+    </form>
+  </div>
+
+  <div class="success" id="success">
+    <div class="success-icon">✓</div>
+    <h2>Event submitted!</h2>
+    <p>We'll review it within 24 hours and publish it in our Telegram channel and Mini App.<br>Thank you for contributing to the Cyprus events scene!</p>
+    <div class="success-btns">
+      <button class="btn-gold" onclick="window.open('https://t.me/WrPtCy','_blank')">📣 Follow @WrPtCy</button>
+      <button class="btn-outline" onclick="resetForm()">Add another event</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let fbReady = false;
+window.addEventListener("firebase-ready", () => { fbReady = true; });
+
+function val(id) { return document.getElementById(id).value.trim(); }
+function showErr(id, show) {
+  document.getElementById(id).style.display = show ? "block" : "none";
+}
+
+function validate() {
+  let ok = true;
+  const checks = [
+    ["f-title", "err-title", v => v.length > 2],
+    ["f-date", "err-date", v => v !== ""],
+    ["f-city", "err-city", v => v !== ""],
+    ["f-category", "err-category", v => v !== ""],
+  ];
+  for (const [fid, eid, fn] of checks) {
+    const pass = fn(val(fid));
+    showErr(eid, !pass);
+    if (!pass) ok = false;
+  }
+  return ok;
+}
+
+document.getElementById("submit-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!validate()) return;
+
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true;
+  btn.textContent = "Submitting...";
+
+  // format date string
+  const dateRaw = val("f-date");
+  const timeRaw = val("f-time");
+  const dateObj = new Date(dateRaw);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dateStr = dateObj ? `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}` : dateRaw;
+
+  const data = {
+    title: val("f-title"),
+    date: dateStr,
+    time: timeRaw,
+    city: val("f-city"),
+    category: val("f-category"),
+    venue: val("f-venue"),
+    full_text: val("f-description"),
+    url: val("f-url"),
+    price: val("f-price"),
+    photo_url: val("f-photo"),
+    contact: val("f-contact"),
+    source: "user_submission",
+  };
+
+  try {
+    if (!fbReady) throw new Error("Firebase not ready");
+    await window._submitEvent(data);
+    document.getElementById("form-wrap").style.display = "none";
+    document.getElementById("success").style.display = "block";
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "SUBMIT EVENT →";
+    alert("Something went wrong: " + err.message);
+  }
+});
+
+function resetForm() {
+  document.getElementById("submit-form").reset();
+  document.getElementById("form-wrap").style.display = "block";
+  document.getElementById("success").style.display = "none";
+}
+
+// Set min date to today
+document.getElementById("f-date").min = new Date().toISOString().split("T")[0];
+</script>
+</body>
+</html>
