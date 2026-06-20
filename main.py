@@ -9,6 +9,7 @@ from parsers.telegram_parser import fetch_events_telegram
 from parsers.eventbrite_parser import fetch_events_cyprus as fetch_eventbrite
 from parsers.incyprus_parser import fetch_events_incyprus
 from parsers.timeout_parser import fetch_events_timeout
+from parsers.web_parser import fetch_events_web
 from bot.poster import post_new_events, format_post
 from bot.formatter_en import format_post_en
 from db.categorizer import categorize
@@ -36,6 +37,7 @@ def main():
     all_events += fetch_eventbrite()
     all_events += fetch_events_incyprus()
     all_events += fetch_events_timeout()
+    all_events += fetch_events_web()
 
     print(f"Всего событий собрано: {len(all_events)}")
 

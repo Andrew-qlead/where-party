@@ -10,9 +10,17 @@ SESSION_STRING = os.environ.get("TG_SESSION_STRING", "")
 PHOTO_DIR = "data/photos"
 
 SOURCE_CHANNELS = [
+    # IT / нетворкинг
     "cyprusit",
     "hub_cy",
+    # Афиши и анонсы
     "cyproplan",
+    "LentaCypRus",       # Лента Кипра — новости + события
+    "Vestnik_Kipra",     # Вестник Кипра — русскоязычная газета
+    "cyprus_kipr",       # Кипр Новости
+    "evropakipr",        # Европа/Кипр — анонсы
+    "whatsoncyprus",     # What's On Cyprus (EN)
+    "cypruseventss",     # Cyprus Events
 ]
 
 EVENT_KEYWORDS = [
