@@ -62,24 +62,7 @@ RSS_SOURCES = [
         "city": "Cyprus",
         "filter": True,
     },
-    # ── Спорт ─────────────────────────────────────────────────────
-    {
-        "url": "https://cyprus-mail.com/category/sport/feed/",
-        "name": "cyprus-mail-sport",
-        "city": "Cyprus",
-        "filter": True,
-        "extra_keywords": [
-            "marathon", "race", "tournament", "championship", "match",
-            "league", "cup", "run", "triathlon", "cycling", "swim",
-            "padel", "tennis", "yoga", "fitness", "game", "event",
-        ],
-    },
-    {
-        "url": "https://cyprus-mail.com/category/athletics/feed/",
-        "name": "cyprus-mail-athletics",
-        "city": "Cyprus",
-        "filter": False,
-    },
+    # cyprus-mail sport/athletics отключены — дают новостные статьи, не афишу
     # ── Дети / семья ──────────────────────────────────────────────
     {
         "url": "https://cyprus-mail.com/category/entertainment/whats-on/feed/",
