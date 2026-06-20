@@ -98,42 +98,42 @@ def clean_text(text: str) -> str:
             cleaned.append(strip_md(line))
     return "\n".join(cleaned).strip()
 
-async def fetch_tg_events(limit_per_channel: int = 30) -> list[dict]:
-    os.makedirs("data", exist_ok=True)
-    os.makedirs(PHOTO_DIR, exist_ok=True)
+async def fetch_tg_events(limit_per_channel: int = 20) -> list[dict]:
+    if not API_ID or not API_HASH or not SESSION_STRING:
+        print("[tg] API_ID/API_HASH/SESSION_STRING не заданы — пропускаем")
+        return []
 
     events = []
-
     from telethon.sessions import StringSession
-    session = StringSession(SESSION_STRING) if SESSION_STRING else SESSION_FILE
-    async with TelegramClient(session, API_ID, API_HASH) as client:
+    session = StringSession(SESSION_STRING)
+
+    try:
+        client = TelegramClient(session, API_ID, API_HASH)
+        await asyncio.wait_for(client.connect(), timeout=15)
+    except Exception as ex:
+        print(f"[tg] Не удалось подключиться: {ex}")
+        return []
+
+    try:
         for channel in SOURCE_CHANNELS:
             channel_events = []
             try:
-                entity = await client.get_entity(channel)
+                entity = await asyncio.wait_for(client.get_entity(channel), timeout=10)
                 async for msg in client.iter_messages(entity, limit=limit_per_channel):
                     text = msg.text or msg.message or ""
                     if not is_event_post(text):
                         continue
 
-                    has_photo = isinstance(msg.media, (MessageMediaPhoto, MessageMediaDocument))
-                    photo_path = None
-
-                    # Скачиваем фото сразу в рамках той же сессии
-                    if has_photo:
-                        try:
-                            path = await client.download_media(msg, file=PHOTO_DIR)
-                            if path and os.path.exists(path):
-                                photo_path = path
-                        except Exception:
-                            photo_path = None
-
                     clean = clean_text(text)
-                    event_id = f"tg_{channel}_{msg.id}"
                     url = extract_url(text, msg.entities)
 
+                    # Фото — берём только если это прямо прикреплённое фото (не скачиваем)
+                    photo_url = ""
+                    if isinstance(msg.media, MessageMediaPhoto):
+                        photo_url = ""  # Telethon не даёт прямой URL без скачивания
+
                     channel_events.append({
-                        "id": event_id,
+                        "id": f"tg_{channel}_{msg.id}",
                         "title": clean.splitlines()[0][:80] if clean else "Event",
                         "full_text": clean,
                         "date": msg.date.strftime("%d %b %Y") if msg.date else "",
@@ -141,14 +141,18 @@ async def fetch_tg_events(limit_per_channel: int = 30) -> list[dict]:
                         "city": "Cyprus",
                         "url": url,
                         "price": "",
-                        "photo_path": photo_path,
+                        "photo_url": photo_url,
                         "source": "tg",
                     })
 
                 events += channel_events
-                print(f"[tg/{channel}] Найдено: {len(channel_events)}")
+                print(f"[tg/{channel}] {len(channel_events)}")
+            except asyncio.TimeoutError:
+                print(f"[tg/{channel}] таймаут")
             except Exception as ex:
-                print(f"[tg/{channel}] Ошибка: {ex}")
+                print(f"[tg/{channel}] ошибка: {ex}")
+    finally:
+        await client.disconnect()
 
     return events
 
