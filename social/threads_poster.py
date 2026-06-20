@@ -2,11 +2,39 @@ import os
 import requests
 import time
 
-# Threads API (Meta) — нужен Instagram Business аккаунт + Facebook App
-# Документация: https://developers.facebook.com/docs/threads
-
 THREADS_TOKEN = os.environ.get("THREADS_ACCESS_TOKEN", "")
 THREADS_USER_ID = os.environ.get("THREADS_USER_ID", "")
+
+CATEGORY_EMOJI = {
+    "music": "🎶", "nightlife": "🎉", "art": "🎨", "food": "🍷",
+    "networking": "🎤", "culture": "📖", "outdoor": "🌊", "sport": "🏃",
+    "kids": "👶", "other": "📌"
+}
+
+def _build_post(event, lang="ru") -> str:
+    cat = event.get("category", "other")
+    emoji = CATEGORY_EMOJI.get(cat, "📌")
+    title = (event.get("title_en") or event.get("title", "")) if lang == "en" else event.get("title", "")
+    text = (event.get("full_text_en") or event.get("full_text", "")) if lang == "en" else event.get("full_text", "")
+    date = event.get("date", "")
+    venue = event.get("venue", "")
+    price = event.get("price", "")
+    url = event.get("url", "")
+
+    lines = [f"{emoji} {title}"]
+    if date: lines.append(f"📅 {date}")
+    if venue: lines.append(f"📍 {venue}")
+    if price: lines.append(f"💰 {price}")
+    if text:
+        body = text[:400].strip()
+        if len(text) > 400: body += "..."
+        lines.append(f"\n{body}")
+    if url: lines.append(f"\n🎟 {url}")
+    if lang == "en":
+        lines.append("\n#Cyprus #CyprusEvents #WhereToBe #WrPtCy")
+    else:
+        lines.append("\n#Кипр #Cyprus #события #WrPtCy")
+    return "\n".join(lines)
 
 BASE_URL = "https://graph.threads.net/v1.0"
 
@@ -81,3 +109,13 @@ def post_events_to_threads(events: list[dict], formatter, posted_ids: set) -> se
         else:
             print(f"[threads] Ошибка: {event.get('title', eid)[:50]}")
     return new_posted
+
+
+def post_event_bilingual(event: dict) -> bool:
+    """Постим событие на русском и английском."""
+    text_ru = _build_post(event, lang="ru")
+    text_en = _build_post(event, lang="en")
+    ok1 = post_to_threads(text_ru)
+    time.sleep(8)
+    ok2 = post_to_threads(text_en)
+    return ok1 or ok2

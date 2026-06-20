@@ -13,7 +13,7 @@ from bot.poster import post_new_events, format_post
 from bot.formatter_en import format_post_en
 from db.categorizer import categorize
 
-USE_FIREBASE = os.path.exists("data/serviceAccount.json")
+USE_FIREBASE = os.path.exists("data/serviceAccount.json") or bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"))
 USE_THREADS = bool(os.environ.get("THREADS_ACCESS_TOKEN"))
 USE_INSTAGRAM = bool(os.environ.get("INSTAGRAM_ACCESS_TOKEN"))
 TG_CHANNEL_EN = os.environ.get("TELEGRAM_CHANNEL_EN", "")  # английский канал
@@ -69,13 +69,23 @@ def main():
         print(f"[tg-en] Постим в английский канал {TG_CHANNEL_EN}")
         post_new_events(all_events, channel_override=TG_CHANNEL_EN, formatter=format_post_en)
 
-    # Threads
+    # Threads — двуязычный постинг
     if USE_THREADS:
         print("[threads] Постим в Threads...")
         from bot.poster import load_posted_ids, save_posted_ids
+        from social.threads_poster import post_event_bilingual
         posted = load_posted_ids("data/posted_threads.json")
-        new = post_events_to_threads(all_events, format_post, posted)
-        save_posted_ids(posted | new, "data/posted_threads.json")
+        new_posted = set()
+        for event in all_events:
+            eid = event.get("id")
+            if eid in posted:
+                continue
+            ok = post_event_bilingual(event)
+            if ok:
+                new_posted.add(eid)
+                print(f"[threads] Опубликовано: {event.get('title', '')[:50]}")
+                import time; time.sleep(15)
+        save_posted_ids(posted | new_posted, "data/posted_threads.json")
 
     # Instagram
     if USE_INSTAGRAM:
