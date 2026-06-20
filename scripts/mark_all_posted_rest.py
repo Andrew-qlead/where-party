@@ -78,39 +78,23 @@ def firestore_patch(token: str, url: str, body: dict):
 BASE = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents"
 
 
-def list_unposted(token: str) -> list:
-    """Получаем все documents где posted_tg=False через runQuery."""
+def list_all_events(token: str) -> list:
+    """Все события из коллекции events."""
     url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents:runQuery"
-    body = {
-        "structuredQuery": {
-            "from": [{"collectionId": "events"}],
-            "where": {
-                "fieldFilter": {
-                    "field": {"fieldPath": "posted_tg"},
-                    "op": "EQUAL",
-                    "value": {"booleanValue": False}
-                }
-            },
-            "limit": 500,
-        }
-    }
+    body = {"structuredQuery": {"from": [{"collectionId": "events"}], "limit": 1000}}
     data = json.dumps(body).encode()
     req = urllib.request.Request(url, data=data, method="POST",
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as r:
         results = json.loads(r.read())
-    docs = [r["document"] for r in results if "document" in r]
-    return docs
+    return [r["document"] for r in results if "document" in r]
 
 
-def mark_posted(token: str, doc_name: str):
-    """PATCH одного документа — выставляем posted_tg=True."""
-    url = f"https://firestore.googleapis.com/v1/{doc_name}?updateMask.fieldPaths=posted_tg"
-    body = {
-        "fields": {
-            "posted_tg": {"booleanValue": True}
-        }
-    }
+def mark_all_posted(token: str, doc_name: str, fields: list):
+    """PATCH документа — выставляем нужные флаги."""
+    mask = "&".join(f"updateMask.fieldPaths={f}" for f in fields)
+    url = f"https://firestore.googleapis.com/v1/{doc_name}?{mask}"
+    body = {"fields": {f: {"booleanValue": True} for f in fields}}
     firestore_patch(token, url, body)
 
 
@@ -123,30 +107,37 @@ def main():
         sys.exit(1)
     print("Токен получен.")
 
-    print("Загружаем события с posted_tg=False...")
-    docs = list_unposted(token)
+    print("Загружаем все события...")
+    docs = list_all_events(token)
     total = len(docs)
     print(f"Найдено: {total}")
 
     if total == 0:
-        print("Всё уже помечено!")
+        print("События не найдены.")
         return
 
-    confirm = input(f"Пометить все {total} как posted_tg=True? [y/N] ").strip().lower()
+    confirm = input(f"Пометить все {total} событий как posted_tg=True И posted_tg_en=True? [y/N] ").strip().lower()
     if confirm != "y":
         print("Отменено.")
         return
 
     for i, doc in enumerate(docs, 1):
         name = doc["name"]
-        try:
-            mark_posted(token, name)
-            if i % 50 == 0 or i == total:
-                print(f"  {i}/{total}")
-        except Exception as e:
-            print(f"  Ошибка {name.split('/')[-1]}: {e}")
+        fields_to_set = []
+        existing = doc.get("fields", {})
+        if not existing.get("posted_tg", {}).get("booleanValue"):
+            fields_to_set.append("posted_tg")
+        if not existing.get("posted_tg_en", {}).get("booleanValue"):
+            fields_to_set.append("posted_tg_en")
+        if fields_to_set:
+            try:
+                mark_all_posted(token, name, fields_to_set)
+            except Exception as e:
+                print(f"  Ошибка {name.split('/')[-1]}: {e}")
+        if i % 50 == 0 or i == total:
+            print(f"  {i}/{total}")
 
-    print(f"\nГотово. {total} событий помечено как posted_tg=True.")
+    print(f"\nГотово. {total} событий помечено.")
 
 if __name__ == "__main__":
     main()

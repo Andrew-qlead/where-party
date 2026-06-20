@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-INTERVAL_HOURS = 2
+INTERVAL_MINUTES = 30
 
 def run_bot():
     print("[worker] Запускаю бот-сервер...", flush=True)
@@ -19,7 +19,7 @@ def run_main():
     print(f"[worker] Парсинг завершён, код {result.returncode}", flush=True)
 
 if __name__ == "__main__":
-    print(f"[worker] Стартую. Парсинг каждые {INTERVAL_HOURS} ч.", flush=True)
+    print(f"[worker] Стартую. Парсинг каждые {INTERVAL_MINUTES} мин.", flush=True)
 
     # Бот в отдельном потоке — работает всегда
     bot_thread = threading.Thread(target=run_bot, daemon=True)
@@ -28,5 +28,5 @@ if __name__ == "__main__":
     # Парсинг сразу и потом по расписанию
     run_main()
     while True:
-        time.sleep(INTERVAL_HOURS * 3600)
+        time.sleep(INTERVAL_MINUTES * 60)
         run_main()
