@@ -97,8 +97,8 @@ def main():
     # TG — русский канал
     post_new_events(events_to_post)
 
-    # TG — английский канал (если задан) — тоже из Firebase
-    if TG_CHANNEL_EN and USE_FIREBASE:
+    # TG — английский канал (если задан и отличается от основного)
+    if TG_CHANNEL_EN and TG_CHANNEL_EN != os.environ.get("TELEGRAM_CHANNEL_ID", "") and USE_FIREBASE:
         from db.firebase import get_unposted as _get_unposted_en
         events_to_post_en = _get_unposted_en(platform="tg", limit=30)
         print(f"[tg-en] Постим в английский канал {TG_CHANNEL_EN}: {len(events_to_post_en)}")

@@ -1,5 +1,5 @@
 import re
-from bot.translator import translate_to_english
+from bot.poster import _hashtags
 
 CATEGORY_EMOJI = {
     "music": "🎶", "nightlife": "🎉", "art": "🎨", "food": "🍷",
@@ -7,54 +7,42 @@ CATEGORY_EMOJI = {
     "sport": "🏃", "kids": "👶", "other": "📌",
 }
 
-def strip_markdown(text: str) -> str:
-    text = re.sub(r'\*+', '', text)
-    text = re.sub(r'_+', '', text)
-    return text.strip()
-
-def extract_title_and_body(full_text: str) -> tuple[str, str]:
-    lines = [l for l in full_text.splitlines() if l.strip()]
-    if not lines:
-        return "", ""
-    title = strip_markdown(lines[0])[:80]
-    body_lines = [strip_markdown(l) for l in lines[1:] if len(strip_markdown(l)) > 3]
-    return title, "\n".join(body_lines[:4])
-
 def format_post_en(event: dict) -> str:
-    full_text = event.get("full_text", "")
-    if full_text:
-        title, body = extract_title_and_body(full_text)
-    else:
-        title = strip_markdown(event.get("title", ""))
-        body = ""
+    # Используем уже переведённые поля (сохранены при парсинге)
+    title = event.get("title_en") or event.get("title", "")
+    body = event.get("full_text_en") or event.get("full_text", "")
 
-    # Переводим через DeepL
-    title_en = translate_to_english(title)
-    body_en = translate_to_english(body) if body else ""
+    title = re.sub(r'\*+|_+|`+', '', title).strip()[:80]
+
+    # Берём первые 4 строки тела
+    body_lines = [l.strip() for l in body.splitlines() if len(l.strip()) > 3]
+    # Пропускаем первую строку если она совпадает с заголовком
+    if body_lines and body_lines[0].lower().strip() == title.lower().strip():
+        body_lines = body_lines[1:]
+    body_short = "\n".join(body_lines[:4])
 
     emoji = CATEGORY_EMOJI.get(event.get("category", ""), "📌")
     divider = "━" * 15
-
-    lines = [divider, f"{emoji} {title_en.upper()}", divider, ""]
+    lines = [divider, f"{emoji} {title.upper()}", divider, ""]
 
     if event.get("date"):
         line = f"📅 {event['date']}"
         if event.get("venue"):
-            line += f" · {translate_to_english(event['venue'])}"
+            line += f" · {event['venue']}"
         elif event.get("city") and event["city"] != "Cyprus":
             line += f" · {event['city']}"
         lines.append(line)
     elif event.get("venue"):
-        lines.append(f"📍 {translate_to_english(event['venue'])}")
+        lines.append(f"📍 {event['venue']}")
 
     if event.get("price"):
         lines.append(f"💰 {event['price']}")
 
-    if body_en:
-        lines += ["", body_en]
+    if body_short:
+        lines += ["", body_short]
 
     if event.get("url"):
         lines += ["", "🔗 Details & Tickets ↓", event["url"]]
 
-    lines += ["", "#Cyprus #Events #WhereParty #CyprusNightlife #VisitCyprus"]
+    lines += ["", _hashtags(event)]
     return "\n".join(lines)

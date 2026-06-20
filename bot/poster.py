@@ -87,8 +87,31 @@ def format_post(event: dict) -> str:
     if event.get("url"):
         lines += ["", "🔗 Подробности ↓", event["url"]]
 
-    lines += ["", "#Cyprus #Events #WhereParty #Larnaca #Nicosia #Limassol"]
+    lines += ["", _hashtags(event)]
     return "\n".join(lines)
+
+
+def _hashtags(event: dict) -> str:
+    tags = ["#Cyprus", "#Events", "#WhereParty"]
+    city = event.get("city", "")
+    city_tags = {
+        "Limassol": "#Limassol", "Nicosia": "#Nicosia",
+        "Larnaca": "#Larnaca", "Paphos": "#Paphos",
+        "Ayia Napa": "#AyiaNapa", "Protaras": "#Protaras",
+    }
+    for c, tag in city_tags.items():
+        if c.lower() in city.lower():
+            tags.append(tag)
+            break
+    cat_tags = {
+        "music": "#CyprusMusic", "nightlife": "#CyprusNightlife",
+        "art": "#CyprusArt", "food": "#CyprusFood",
+        "sport": "#CyprusSport", "kids": "#CyprusKids",
+        "outdoor": "#CyprusOutdoor", "networking": "#CyprusNetworking",
+    }
+    cat = cat_tags.get(event.get("category", ""), "#CyprusEvents")
+    tags.append(cat)
+    return " ".join(tags)
 
 # ── Отправка в Telegram ────────────────────────────────────────────────────────
 

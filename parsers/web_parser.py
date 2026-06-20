@@ -132,11 +132,47 @@ def _parse_date(raw: str) -> str:
     except Exception:
         pass
     try:
-        # ISO format
         dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
         return dt.strftime("%d %b %Y")
     except Exception:
         return raw[:10]
+
+
+EN_MONTHS = {
+    "january":1,"february":2,"march":3,"april":4,"may":5,"june":6,
+    "july":7,"august":8,"september":9,"october":10,"november":11,"december":12,
+    "jan":1,"feb":2,"mar":3,"apr":4,"jun":6,"jul":7,"aug":8,
+    "sep":9,"oct":10,"nov":11,"dec":12,
+}
+RU_MONTHS_WEB = {
+    "января":1,"февраля":2,"марта":3,"апреля":4,"мая":5,"июня":6,
+    "июля":7,"августа":8,"сентября":9,"октября":10,"ноября":11,"декабря":12,
+}
+
+def _extract_event_date(text: str, pub_date_str: str) -> str:
+    """Пробуем вытащить реальную дату события из текста. Fallback — pubDate."""
+    year = datetime.now().year
+    # "19 June", "19 Jun", "June 19"
+    m = re.search(r'\b(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\b', text, re.I)
+    if m:
+        day, mon_s = int(m.group(1)), m.group(2).lower()
+        mon = EN_MONTHS.get(mon_s)
+        if mon:
+            return datetime(year, mon, day).strftime("%d %b %Y")
+    m = re.search(r'\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\s+(\d{1,2})\b', text, re.I)
+    if m:
+        mon_s, day = m.group(1).lower(), int(m.group(2))
+        mon = EN_MONTHS.get(mon_s)
+        if mon:
+            return datetime(year, mon, day).strftime("%d %b %Y")
+    # "19 июня"
+    m = re.search(r'\b(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\b', text, re.I)
+    if m:
+        day, mon_s = int(m.group(1)), m.group(2).lower()
+        mon = RU_MONTHS_WEB.get(mon_s)
+        if mon:
+            return datetime(year, mon, day).strftime("%d %b %Y")
+    return _parse_date(pub_date_str)
 
 
 def _extract_photo(item: str) -> str:
@@ -187,7 +223,7 @@ def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool, extra_key
             if not any(kw in (title + " " + desc).lower() for kw in keywords):
                 continue
 
-        date_str = _parse_date(pub_date)
+        date_str = _extract_event_date(title + " " + desc, pub_date)
         eid = f"{source_name}_{re.sub(r'[^a-z0-9]', '', title.lower()[:35])}"
 
         events.append({
