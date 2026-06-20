@@ -13,14 +13,25 @@ SOURCE_CHANNELS = [
     # IT / нетворкинг
     "cyprusit",
     "hub_cy",
-    # Афиши и анонсы
+    # Общие афиши
     "cyproplan",
-    "LentaCypRus",       # Лента Кипра — новости + события
-    "Vestnik_Kipra",     # Вестник Кипра — русскоязычная газета
-    "cyprus_kipr",       # Кипр Новости
-    "evropakipr",        # Европа/Кипр — анонсы
-    "whatsoncyprus",     # What's On Cyprus (EN)
-    "cypruseventss",     # Cyprus Events
+    "LentaCypRus",          # Лента Кипра
+    "Vestnik_Kipra",        # Вестник Кипра
+    "cyprus_kipr",          # Кипр Новости
+    "evropakipr",           # Европа/Кипр
+    "whatsoncyprus",        # What's On Cyprus (EN)
+    "cypruseventss",        # Cyprus Events (EN)
+    # Спорт
+    "KouspoRun",            # Беговые события Кипра
+    "CyprusRoadRaces",      # Шоссейные гонки Кипра
+    "limassol_sport",       # Спорт Лимасол
+    "yoga_cyprus",          # Йога Кипр
+    "padelcyprus",          # Падел Кипр
+    # Дети и семья
+    "Fractal_in_Cyprus",    # Кружки и мероприятия для детей
+    "kidscyprus",           # Детские события
+    "family_cyprus",        # Семейный Кипр
+    "mamacyprus",           # Мамы Кипра — анонсы детских событий
 ]
 
 EVENT_KEYWORDS = [

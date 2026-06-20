@@ -24,15 +24,16 @@ EVENT_KEYWORDS = [
 ]
 
 RSS_SOURCES = [
+    # ── Афиша / культура ──────────────────────────────────────────
     {
         "url": "https://cyprus-mail.com/category/entertainment/whats-on/feed/",
-        "name": "cyprus-mail",
+        "name": "cyprus-mail-whatson",
         "city": "Cyprus",
-        "filter": False,  # уже событийная рубрика
+        "filter": False,
     },
     {
-        "url": "https://www.vestnik.cy/feed/",
-        "name": "vestnik-cy",
+        "url": "https://www.parikiaki.com/feed/",
+        "name": "parikiaki",
         "city": "Cyprus",
         "filter": True,
     },
@@ -42,11 +43,34 @@ RSS_SOURCES = [
         "city": "Cyprus",
         "filter": True,
     },
+    # ── Спорт ─────────────────────────────────────────────────────
     {
-        "url": "https://www.parikiaki.com/feed/",
-        "name": "parikiaki",
+        "url": "https://cyprus-mail.com/category/sport/feed/",
+        "name": "cyprus-mail-sport",
         "city": "Cyprus",
         "filter": True,
+        "extra_keywords": [
+            "marathon", "race", "tournament", "championship", "match",
+            "league", "cup", "run", "triathlon", "cycling", "swim",
+            "padel", "tennis", "yoga", "fitness", "game", "event",
+        ],
+    },
+    {
+        "url": "https://cyprus-mail.com/category/athletics/feed/",
+        "name": "cyprus-mail-athletics",
+        "city": "Cyprus",
+        "filter": False,
+    },
+    # ── Дети / семья ──────────────────────────────────────────────
+    {
+        "url": "https://cyprus-mail.com/category/entertainment/whats-on/feed/",
+        "name": "cyprus-mail-kids",
+        "city": "Cyprus",
+        "filter": True,
+        "extra_keywords": [
+            "kids", "children", "child", "family", "workshop for", "summer camp",
+            "school", "junior", "youth", "animation", "puppet",
+        ],
     },
 ]
 
@@ -96,7 +120,7 @@ def _parse_date(raw: str) -> str:
         return raw[:10]
 
 
-def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool) -> list[dict]:
+def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool, extra_keywords: list = None) -> list[dict]:
     events = []
     items = re.findall(r"<item>(.*?)</item>", xml, re.S)
     for item in items:
@@ -115,8 +139,10 @@ def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool) -> list[d
 
         if not title or len(title) < 8:
             continue
-        if do_filter and not _is_event(title, desc):
-            continue
+        if do_filter:
+            keywords = (extra_keywords or []) + EVENT_KEYWORDS
+            if not any(kw in (title + " " + desc).lower() for kw in keywords):
+                continue
 
         date_str = _parse_date(pub_date)
         eid = f"{source_name}_{re.sub(r'[^a-z0-9]', '', title.lower()[:35])}"
@@ -141,7 +167,7 @@ def fetch_events_web() -> list[dict]:
         xml = _get(src["url"])
         if not xml:
             continue
-        events = _parse_rss(xml, src["name"], src["city"], src["filter"])
+        events = _parse_rss(xml, src["name"], src["city"], src["filter"], src.get("extra_keywords"))
         all_events += events
         print(f"[{src['name']}] Найдено: {len(events)}")
     return all_events
