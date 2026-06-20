@@ -18,9 +18,16 @@
 
   window._admin = {
     async loadSubmissions() {
-      const q = query(collection(db, "submissions"), where("approved", "==", false), orderBy("created_at", "asc"));
+      // без orderBy — не нужен составной индекс, сортируем на клиенте
+      const q = query(collection(db, "submissions"), where("approved", "==", false));
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+      const docs = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+      docs.sort((a, b) => {
+        const ta = a.created_at?.toMillis?.() || 0;
+        const tb = b.created_at?.toMillis?.() || 0;
+        return ta - tb;
+      });
+      return docs;
     },
 
     async approve(sub) {
@@ -61,9 +68,11 @@
     },
 
     async loadRecent() {
-      const q = query(collection(db, "events"), orderBy("created_at", "desc"));
+      const q = query(collection(db, "events"));
       const snap = await getDocs(q);
-      return snap.docs.slice(0, 50).map(d => ({ _docId: d.id, ...d.data() }));
+      const docs = snap.docs.map(d => ({ _docId: d.id, ...d.data() }));
+      docs.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+      return docs.slice(0, 50);
     },
 
     async deleteEvent(docId) {
