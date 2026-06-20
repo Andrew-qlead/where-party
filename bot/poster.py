@@ -128,21 +128,23 @@ def send_text(text: str, channel: str = None) -> bool:
         return False
 
 def send_photo_url(photo_url: str, caption: str, channel: str = None) -> bool:
-    """Отправляем фото по URL (не скачиваем локально)."""
+    """Отправляем фото по URL. Если Telegram не может скачать — постим текст."""
     ch = channel or CHANNEL_ID
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    # Пробуем через multipart (скачиваем сами и шлём как файл)
     try:
-        r = requests.post(url, json={
-            "chat_id": ch,
-            "photo": photo_url,
-            "caption": caption[:1024],
-        }, timeout=15)
-        if not r.ok:
-            print(f"[poster] sendPhoto failed ({r.status_code}), falling back to text")
-        return r.ok
-    except Exception as ex:
-        print(f"[poster] send_photo_url error: {ex}")
-        return False
+        img = requests.get(photo_url, timeout=8)
+        if img.ok and img.headers.get("content-type", "").startswith("image"):
+            tg_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+            r = requests.post(tg_url, data={
+                "chat_id": ch,
+                "caption": caption[:1024],
+            }, files={"photo": ("photo.jpg", img.content, "image/jpeg")}, timeout=20)
+            if r.ok:
+                return True
+    except Exception:
+        pass
+    # Fallback — без фото
+    return False
 
 # ── Основная функция постинга — использует Firebase как источник правды ────────
 

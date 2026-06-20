@@ -101,9 +101,39 @@ def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+NOISE_PHRASES = [
+    # спортивные новости (не события)
+    "breaks record", "world record", "championship parade", "must ditch",
+    "wake-up call", "after morocco", "knicks", "nba", "premier league",
+    "transfer", "signing", "squad", "coach sacked", "fired", "appointed",
+    # политика / некрологи
+    "dies at", "passed away", "obituary", "election", "parliament", "minister",
+    "prime minister", "government", "ceasefire", "war", "conflict", "troops",
+    # финансовые новости
+    "stock", "shares", "nasdaq", "crypto crash", "bitcoin price",
+]
+
 def _is_event(title: str, desc: str) -> bool:
     text = (title + " " + desc).lower()
+    if any(p in text for p in NOISE_PHRASES):
+        return False
     return any(kw in text for kw in EVENT_KEYWORDS)
+
+
+def _quality_score(event: dict) -> int:
+    """Оценка качества события 0-4. Берём только если >= 1."""
+    score = 0
+    text = (event.get("title", "") + " " + event.get("full_text", "")).lower()
+    if event.get("date"):
+        score += 1
+    if event.get("url"):
+        score += 1
+    if any(w in text for w in ["cyprus", "кипр", "limassol", "nicosia", "larnaca", "paphos"]):
+        score += 1
+    if any(w in text for w in ["ticket", "entrance", "admission", "free", "€", "price",
+                                 "вход", "билет", "бесплатно", "цена"]):
+        score += 1
+    return score
 
 
 def _parse_date(raw: str) -> str:
@@ -213,6 +243,8 @@ def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool, extra_key
             keywords = (extra_keywords or []) + EVENT_KEYWORDS
             if not any(kw in (title + " " + desc).lower() for kw in keywords):
                 continue
+        if not _is_event(title, desc):
+            continue
 
         date_str = _extract_event_date(title + " " + desc, pub_date)
         eid = f"{source_name}_{re.sub(r'[^a-z0-9]', '', title.lower()[:35])}"

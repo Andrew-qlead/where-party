@@ -86,7 +86,11 @@ def main():
             filtered.append(event)
 
     print(f"После фильтра по дате: {len(filtered)} (было {len(all_events)})")
-    all_events = filtered
+
+    # Фильтр качества — только события с оценкой >= 1
+    from parsers.web_parser import _quality_score
+    all_events = [e for e in filtered if e.get("source") == "tg" or _quality_score(e) >= 1]
+    print(f"После фильтра качества: {len(all_events)}")
 
     # Категоризация + извлечение города
     for event in all_events:
