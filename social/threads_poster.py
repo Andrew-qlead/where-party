@@ -1,9 +1,12 @@
 import os
 import requests
 import time
+import re
 
 THREADS_TOKEN = os.environ.get("THREADS_ACCESS_TOKEN", "")
 THREADS_USER_ID = os.environ.get("THREADS_USER_ID", "")
+
+BASE_URL = "https://graph.threads.net/v1.0"
 
 CATEGORY_EMOJI = {
     "music": "🎶", "nightlife": "🎉", "art": "🎨", "food": "🍷",
@@ -11,65 +14,105 @@ CATEGORY_EMOJI = {
     "kids": "👶", "other": "📌"
 }
 
-def _build_post(event, lang="ru") -> str:
-    cat = event.get("category", "other")
-    emoji = CATEGORY_EMOJI.get(cat, "📌")
-    title = (event.get("title_en") or event.get("title", "")) if lang == "en" else event.get("title", "")
-    text = (event.get("full_text_en") or event.get("full_text", "")) if lang == "en" else event.get("full_text", "")
-    date = event.get("date", "")
-    venue = event.get("venue", "")
-    price = event.get("price", "")
-    url = event.get("url", "")
+CITY_TAG = {
+    "limassol": "#Limassol", "nicosia": "#Nicosia",
+    "larnaca": "#Larnaca", "paphos": "#Paphos",
+    "ayia napa": "#AyiaNapa", "protaras": "#Protaras",
+}
 
+CAT_TAG = {
+    "music": "#LiveMusic", "nightlife": "#Nightlife",
+    "art": "#Art", "food": "#FoodAndDrink",
+    "networking": "#Networking", "culture": "#Culture",
+    "outdoor": "#Outdoors", "sport": "#Sport", "kids": "#FamilyFun",
+}
+
+
+def _hashtags(event: dict) -> str:
+    tags = ["#Cyprus", "#CyprusEvents", "#WhereParty"]
+    city = (event.get("city") or "").lower()
+    for c, tag in CITY_TAG.items():
+        if c in city:
+            tags.append(tag)
+            break
+    cat = event.get("category", "")
+    if cat in CAT_TAG:
+        tags.append(CAT_TAG[cat])
+    return " ".join(tags)
+
+
+def _clean(text: str) -> str:
+    text = re.sub(r'\*+|_+|`+', '', text)
+    return text.strip()
+
+
+def build_post(event: dict) -> str:
+    """Один EN пост на событие. Лимит Threads — 500 символов."""
+    title = _clean(event.get("title_en") or event.get("title", ""))
+    body = _clean(event.get("full_text_en") or event.get("full_text", ""))
+    emoji = CATEGORY_EMOJI.get(event.get("category", ""), "📌")
+    tags = _hashtags(event)
+
+    # Заголовок
     lines = [f"{emoji} {title}"]
-    if date: lines.append(f"📅 {date}")
-    if venue: lines.append(f"📍 {venue}")
-    if price: lines.append(f"💰 {price}")
-    if text:
-        body = text[:400].strip()
-        if len(text) > 400: body += "..."
-        lines.append(f"\n{body}")
-    if url: lines.append(f"\n🎟 {url}")
-    if lang == "en":
-        lines.append("\n#Cyprus #CyprusEvents #WhereToBe #WrPtCy")
-    else:
-        lines.append("\n#Кипр #Cyprus #события #WrPtCy")
-    return "\n".join(lines)
 
-BASE_URL = "https://graph.threads.net/v1.0"
+    # Дата + место
+    meta = []
+    if event.get("date"):
+        meta.append(f"📅 {event['date']}")
+    venue = event.get("venue", "")
+    city = event.get("city", "")
+    if venue:
+        meta.append(f"📍 {venue}")
+    elif city and city != "Cyprus":
+        meta.append(f"📍 {city}")
+    if meta:
+        lines.append("  ".join(meta))
+
+    if event.get("price"):
+        lines.append(f"💰 {event['price']}")
+
+    # Тело — обрезаем по последнему полному предложению
+    reserved = len("\n".join(lines)) + len(tags) + 10  # место под хэштеги
+    available = 490 - reserved
+    if body and available > 60:
+        body_lines = [l for l in body.splitlines() if len(l.strip()) > 3]
+        # Пропускаем первую строку если дублирует заголовок
+        if body_lines and body_lines[0].lower().strip() == title.lower().strip():
+            body_lines = body_lines[1:]
+        excerpt = " ".join(body_lines)[:available]
+        # Обрезаем по последней точке чтобы не обрывать на полуслове
+        last_dot = max(excerpt.rfind(". "), excerpt.rfind(".\n"), excerpt.rfind("! "), excerpt.rfind("? "))
+        if last_dot > available // 2:
+            excerpt = excerpt[:last_dot + 1]
+        if excerpt:
+            lines.append(f"\n{excerpt}")
+
+    if event.get("url"):
+        lines.append(f"\n🔗 {event['url']}")
+
+    lines.append(f"\n{tags}")
+    return "\n".join(lines)[:500]
 
 
-def create_text_post(text: str) -> str | None:
-    """Создаём контейнер поста, возвращает creation_id."""
+# ── API ───────────────────────────────────────────────────────────────────────
+
+def _create_container(text: str, image_url: str = None) -> str | None:
     url = f"{BASE_URL}/{THREADS_USER_ID}/threads"
-    r = requests.post(url, params={
-        "media_type": "TEXT",
-        "text": text[:500],  # Threads лимит
-        "access_token": THREADS_TOKEN,
-    }, timeout=15)
+    params = {"access_token": THREADS_TOKEN, "text": text}
+    if image_url:
+        params["media_type"] = "IMAGE"
+        params["image_url"] = image_url
+    else:
+        params["media_type"] = "TEXT"
+    r = requests.post(url, params=params, timeout=15)
     if r.ok:
         return r.json().get("id")
     print(f"[threads] create error: {r.text}")
     return None
 
 
-def create_photo_post(text: str, image_url: str) -> str | None:
-    """Создаём контейнер с фото."""
-    url = f"{BASE_URL}/{THREADS_USER_ID}/threads"
-    r = requests.post(url, params={
-        "media_type": "IMAGE",
-        "image_url": image_url,
-        "text": text[:500],
-        "access_token": THREADS_TOKEN,
-    }, timeout=15)
-    if r.ok:
-        return r.json().get("id")
-    print(f"[threads] create photo error: {r.text}")
-    return None
-
-
-def publish_post(creation_id: str) -> bool:
-    """Публикуем созданный контейнер."""
+def _publish(creation_id: str) -> bool:
     url = f"{BASE_URL}/{THREADS_USER_ID}/threads_publish"
     r = requests.post(url, params={
         "creation_id": creation_id,
@@ -82,40 +125,31 @@ def publish_post(creation_id: str) -> bool:
 
 def post_to_threads(text: str, image_url: str = None) -> bool:
     if not THREADS_TOKEN or not THREADS_USER_ID:
-        print("[threads] THREADS_ACCESS_TOKEN или THREADS_USER_ID не заданы")
         return False
-
-    creation_id = create_photo_post(text, image_url) if image_url else create_text_post(text)
-    if not creation_id:
+    cid = _create_container(text, image_url)
+    if not cid:
         return False
+    time.sleep(5)
+    return _publish(cid)
 
-    time.sleep(5)  # Threads требует паузу перед публикацией
-    return publish_post(creation_id)
+
+def post_event_bilingual(event: dict) -> bool:
+    """Один пост на событие (EN). Без RU дубля — Threads аудитория EN."""
+    photo = event.get("photo_url", "")
+    text = build_post(event)
+    ok = post_to_threads(text, image_url=photo if photo else None)
+    return ok
 
 
-def post_events_to_threads(events: list[dict], formatter, posted_ids: set) -> set:
-    """Постим новые события в Threads."""
+# Оставляем для обратной совместимости
+def post_events_to_threads(events, formatter, posted_ids):
     new_posted = set()
     for event in events:
         eid = event.get("id")
         if eid in posted_ids:
             continue
-        text = formatter(event)
-        ok = post_to_threads(text)
+        ok = post_event_bilingual(event)
         if ok:
             new_posted.add(eid)
-            print(f"[threads] Опубликовано: {event.get('title', eid)[:50]}")
-            time.sleep(10)  # пауза между постами
-        else:
-            print(f"[threads] Ошибка: {event.get('title', eid)[:50]}")
+            time.sleep(10)
     return new_posted
-
-
-def post_event_bilingual(event: dict) -> bool:
-    """Постим событие на русском и английском."""
-    text_ru = _build_post(event, lang="ru")
-    text_en = _build_post(event, lang="en")
-    ok1 = post_to_threads(text_ru)
-    time.sleep(8)
-    ok2 = post_to_threads(text_en)
-    return ok1 or ok2
