@@ -23,13 +23,13 @@ SOURCE_CHANNELS = [
     "kipr_podslushano_limasol",   # Подслушано Лимасол
     "kipr_podslushano_nicosia",   # Подслушано Никосия
     # ── Спорт ─────────────────────────────────────────────────
-    "KouspoRun",            # Беговые события Кипра
-    "CyprusRoadRaces",      # Шоссейные гонки
+    # "KouspoRun",          # username не работает
+    # "CyprusRoadRaces",    # username не работает
     "yoga_cyprus",          # Йога Кипр
     "padelcyprus",          # Падел Кипр
     # ── Дети / семья ──────────────────────────────────────────
     "Fractal_in_Cyprus",    # Кружки и лагеря для детей
-    "kidscyprus",           # Детские события
+    # "kidscyprus",          # username не работает
     "mamacyprus",           # Мамы Кипра
 ]
 

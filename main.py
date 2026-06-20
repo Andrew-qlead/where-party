@@ -96,25 +96,24 @@ def main():
             if detected:
                 event["city"] = detected
 
-    # Перевод на английский — только для новых (без title_en)
-    from bot.translator import translate_to_english
-    to_translate = [e for e in all_events if not e.get("title_en")]
-    print(f"[translate] Переводим {len(to_translate)} новых событий")
-    for event in to_translate:
-        event["title_en"] = translate_to_english(event.get("title", ""))
-        src = event.get("full_text") or event.get("title") or ""
-        event["full_text_en"] = translate_to_english(src[:500])
-
-    # Firebase
+    # Firebase — сначала сохраняем без перевода
     if USE_FIREBASE:
         cleanup_old_events(days=30)
         new_in_db = save_events_batch(all_events)
         print(f"[firebase] Новых в базе: {new_in_db}")
 
-        # Берём непосланные события прямо из Firebase — надёжнее локального JSON
-        # (Railway эфемерен, JSON теряется при перезапуске)
         from db.firebase import get_unposted
         events_to_post = get_unposted(platform="tg", limit=5)
+
+        # Переводим только те что будем постить (5 штук максимум)
+        from bot.translator import translate_to_english
+        for event in events_to_post:
+            if not event.get("title_en"):
+                event["title_en"] = translate_to_english(event.get("title", ""))
+            if not event.get("full_text_en"):
+                src = event.get("full_text") or event.get("title") or ""
+                event["full_text_en"] = translate_to_english(src[:500])
+        print(f"[firebase] К публикации в TG: {len(events_to_post)}")
         print(f"[firebase] К публикации в TG: {len(events_to_post)}")
     else:
         print("[firebase] serviceAccount.json не найден — пропускаем БД")
