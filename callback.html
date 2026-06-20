@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Auth</title></head>
+<body>
+<h2>Code received!</h2>
+<p id="code" style="word-break:break-all;font-family:monospace;font-size:14px;background:#f0f0f0;padding:16px;"></p>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  document.getElementById('code').textContent = code || 'No code found. Error: ' + params.get('error_description');
+</script>
+</body>
+</html>
