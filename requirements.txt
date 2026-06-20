@@ -6,3 +6,4 @@ python-dotenv
 firebase-admin
 deepl
 deep-translator
+rapidfuzz

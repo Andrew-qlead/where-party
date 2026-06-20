@@ -139,6 +139,30 @@ def _parse_date(raw: str) -> str:
         return raw[:10]
 
 
+def _extract_photo(item: str) -> str:
+    """Ищем URL картинки в разных местах RSS-элемента."""
+    # <media:thumbnail url="..."/>
+    m = re.search(r'<media:thumbnail[^>]+url=["\']([^"\']+)["\']', item, re.S)
+    if m:
+        return m.group(1)
+    # <media:content url="..." medium="image".../>
+    m = re.search(r'<media:content[^>]+url=["\']([^"\']+\.(?:jpg|jpeg|png|webp))["\']', item, re.I)
+    if m:
+        return m.group(1)
+    # <enclosure url="..." type="image/..."/>
+    m = re.search(r'<enclosure[^>]+type=["\']image/[^"\']+["\'][^>]+url=["\']([^"\']+)["\']', item, re.S)
+    if m:
+        return m.group(1)
+    m = re.search(r'<enclosure[^>]+url=["\']([^"\']+)["\'][^>]+type=["\']image/[^"\']+["\']', item, re.S)
+    if m:
+        return m.group(1)
+    # первый <img src="..."> в теле описания
+    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', item, re.S)
+    if m:
+        return m.group(1)
+    return ""
+
+
 def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool, extra_keywords: list = None) -> list[dict]:
     events = []
     items = re.findall(r"<item>(.*?)</item>", xml, re.S)
@@ -175,6 +199,7 @@ def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool, extra_key
             "city": city,
             "url": link,
             "price": "",
+            "photo_url": _extract_photo(item),
             "source": source_name,
         })
     return events

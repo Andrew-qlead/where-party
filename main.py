@@ -13,6 +13,7 @@ from parsers.web_parser import fetch_events_web
 from bot.poster import post_new_events, format_post
 from bot.formatter_en import format_post_en
 from db.categorizer import categorize
+from db.city_extractor import extract_city
 
 USE_FIREBASE = os.path.exists("data/serviceAccount.json") or bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"))
 USE_THREADS = bool(os.environ.get("THREADS_ACCESS_TOKEN"))
@@ -20,7 +21,7 @@ USE_INSTAGRAM = bool(os.environ.get("INSTAGRAM_ACCESS_TOKEN"))
 TG_CHANNEL_EN = os.environ.get("TELEGRAM_CHANNEL_EN", "")  # английский канал
 
 if USE_FIREBASE:
-    from db.firebase import save_events_batch, mark_posted
+    from db.firebase import save_events_batch, mark_posted, cleanup_old_events
 
 if USE_THREADS:
     from social.threads_poster import post_events_to_threads
@@ -41,20 +42,33 @@ def main():
 
     print(f"Всего событий собрано: {len(all_events)}")
 
-    # Дедупликация по заголовку
-    seen_titles = set()
-    unique_events = []
-    for event in all_events:
-        title_key = (event.get("title") or "")[:50].lower().strip()
-        if title_key and title_key not in seen_titles:
-            seen_titles.add(title_key)
-            unique_events.append(event)
-    all_events = unique_events
+    # Дедупликация — fuzzy match по заголовку (rapidfuzz, порог 88%)
+    try:
+        from rapidfuzz import fuzz
+        unique_events = []
+        seen_titles = []
+        for event in all_events:
+            title = (event.get("title") or "")[:80].lower().strip()
+            if not title:
+                continue
+            is_dup = any(fuzz.token_sort_ratio(title, s) >= 88 for s in seen_titles)
+            if not is_dup:
+                seen_titles.append(title)
+                unique_events.append(event)
+        all_events = unique_events
+    except ImportError:
+        # rapidfuzz не установлен — простая дедупликация
+        seen = set()
+        all_events = [e for e in all_events if (k := (e.get("title") or "")[:50].lower().strip()) and not seen.add(k) and k not in seen]
     print(f"После дедупликации: {len(all_events)}")
 
-    # Категоризация
+    # Категоризация + извлечение города
     for event in all_events:
         event["category"] = categorize(event)
+        if not event.get("city") or event.get("city") == "Cyprus":
+            detected = extract_city((event.get("title") or "") + " " + (event.get("full_text") or ""))
+            if detected:
+                event["city"] = detected
 
     # Перевод на английский (title_en, full_text_en)
     from bot.translator import translate_to_english
@@ -67,6 +81,7 @@ def main():
 
     # Firebase
     if USE_FIREBASE:
+        cleanup_old_events(days=30)
         new_in_db = save_events_batch(all_events)
         print(f"[firebase] Новых в базе: {new_in_db}")
     else:

@@ -2,7 +2,7 @@ import os
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 _db = None
 
@@ -125,6 +125,29 @@ def get_unposted(platform: str = "tg", limit: int = 50) -> list[dict]:
     except Exception as ex:
         print(f"[firebase] get_unposted error: {ex}")
         return []
+
+
+def cleanup_old_events(days: int = 30):
+    """Удаляем события старше N дней."""
+    try:
+        db = get_db()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+        docs = (
+            db.collection("events")
+            .where("created_at", "<", cutoff)
+            .limit(400)
+            .stream()
+        )
+        batch = db.batch()
+        count = 0
+        for doc in docs:
+            batch.delete(doc.reference)
+            count += 1
+        if count:
+            batch.commit()
+        print(f"[firebase] Удалено старых событий: {count}")
+    except Exception as ex:
+        print(f"[firebase] cleanup error: {ex}")
 
 
 def get_events_by_category(category: str, limit: int = 20) -> list[dict]:
