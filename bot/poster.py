@@ -159,9 +159,9 @@ def post_new_events(events: list, channel_override: str = None, formatter=None):
 
     channel = channel_override or CHANNEL_ID
     fmt = formatter or format_post
-    is_main_channel = not channel_override  # основной RU канал
+    # platform: "tg" для основного канала, "tg_en" для EN
+    platform = "tg" if not channel_override else "tg_en"
 
-    # Firebase mark_posted — импортируем если доступно
     mark_fb = None
     try:
         from db.firebase import mark_posted as _mark
@@ -176,10 +176,7 @@ def post_new_events(events: list, channel_override: str = None, formatter=None):
         if not eid:
             continue
 
-        # Пропускаем уже запощенные (флаг из Firebase, прочитанный при сохранении)
-        # Для основного канала проверяем posted_tg, для EN — posted_tg_en
-        flag_key = "posted_tg" if is_main_channel else f"posted_tg_{channel.strip('@')}"
-        if event.get(flag_key) or event.get("posted_tg"):
+        if event.get(f"posted_{platform}"):
             continue
 
         text = fmt(event)
@@ -195,11 +192,10 @@ def post_new_events(events: list, channel_override: str = None, formatter=None):
         if ok:
             new_count += 1
             print(f"[poster/{channel}] Опубликовано: {event.get('title', eid)[:50]}")
-            # Ставим флаг в Firebase
             if mark_fb:
                 try:
-                    mark_fb(eid, "tg")
-                    event["posted_tg"] = True  # обновляем локально чтобы не дублировать в этой сессии
+                    mark_fb(eid, platform)
+                    event[f"posted_{platform}"] = True
                 except Exception as e:
                     print(f"[poster] mark_posted error: {e}")
             time.sleep(3)

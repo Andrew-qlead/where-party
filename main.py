@@ -97,14 +97,12 @@ def main():
     # TG — русский канал
     post_new_events(events_to_post)
 
-    # TG — английский канал (если задан и отличается от основного)
+    # TG — английский канал (отдельный флаг posted_tg_en)
     if TG_CHANNEL_EN and TG_CHANNEL_EN != os.environ.get("TELEGRAM_CHANNEL_ID", "") and USE_FIREBASE:
         from db.firebase import get_unposted as _get_unposted_en
-        events_to_post_en = _get_unposted_en(platform="tg", limit=30)
-        print(f"[tg-en] Постим в английский канал {TG_CHANNEL_EN}: {len(events_to_post_en)}")
+        events_to_post_en = _get_unposted_en(platform="tg_en", limit=30)
+        print(f"[tg-en] Постим в {TG_CHANNEL_EN}: {len(events_to_post_en)}")
         post_new_events(events_to_post_en, channel_override=TG_CHANNEL_EN, formatter=format_post_en)
-    elif TG_CHANNEL_EN:
-        post_new_events(all_events, channel_override=TG_CHANNEL_EN, formatter=format_post_en)
 
     # Threads — используем posted_threads из Firebase
     if USE_THREADS:
