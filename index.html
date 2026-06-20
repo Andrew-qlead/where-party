@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WR PT — Cyprus Events</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  window._db = getFirestore(initializeApp(window.FIREBASE_CONFIG));
+  window._fs = { collection, query, where, orderBy, limit, getDocs };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --espresso: #2B2A1A;
+  --espresso2: #1a1a10;
+  --gold: #C9A84C;
+  --gold-dim: #C9A84C33;
+  --limestone: #F2EDE2;
+  --limestone-dim: #F2EDE244;
+  --terracotta: #C04A26;
+  --olive: #6F7A3B;
+  --card-bg: #232215;
+  --border: #C9A84C18;
+  --muted: #F2EDE255;
+}
+
+html, body { height: 100%; background: var(--espresso2); color: var(--limestone); font-family: -apple-system, sans-serif; overscroll-behavior: none; }
+
+/* HEADER */
+.header {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--espresso2);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px 10px;
+}
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.logo {
+  font-family: 'EB Garamond', 'Palatino Linotype', Georgia, serif;
+  font-size: 22px; letter-spacing: 4px; line-height: 1;
+}
+.logo span { color: var(--gold); }
+.logo-sub { font-size: 8px; letter-spacing: 4px; color: var(--muted); font-family: sans-serif; margin-top: 2px; }
+
+/* LANG TOGGLE */
+.lang-toggle {
+  display: flex; gap: 2px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px;
+}
+.lang-btn {
+  padding: 4px 12px; border-radius: 16px; border: none;
+  font-size: 11px; letter-spacing: 1px; font-family: sans-serif;
+  cursor: pointer; transition: all .2s;
+  background: transparent; color: var(--muted);
+}
+.lang-btn.active { background: var(--gold); color: var(--espresso); font-weight: 600; }
+
+/* SEARCH */
+.search-wrap { position: relative; margin-bottom: 10px; }
+.search {
+  width: 100%; background: var(--card-bg);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 14px 9px 36px;
+  color: var(--limestone); font-size: 13px; outline: none;
+}
+.search::placeholder { color: var(--muted); }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+
+/* CATEGORIES */
+.cats { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.cats::-webkit-scrollbar { display: none; }
+.cat-btn {
+  flex-shrink: 0; padding: 5px 12px;
+  border-radius: 20px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted);
+  font-size: 11px; font-family: sans-serif; letter-spacing: .5px;
+  cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.cat-btn.active { background: var(--gold); border-color: var(--gold); color: var(--espresso); font-weight: 600; }
+
+/* EVENTS */
+.events { padding: 12px 16px 90px; display: flex; flex-direction: column; gap: 10px; }
+
+/* CARD */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+  cursor: pointer; transition: border-color .2s;
+  position: relative;
+}
+.card:active { opacity: 0.85; }
+.card:hover { border-color: var(--gold-dim); }
+
+.card-cat-bar {
+  width: 3px; position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--gold);
+}
+.card-body { padding: 14px 14px 14px 18px; }
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.card-cat-label { font-family: sans-serif; font-size: 9px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; }
+.card-emoji { font-size: 18px; flex-shrink: 0; }
+.card-title {
+  font-family: 'EB Garamond', 'Palatino Linotype', Georgia, serif;
+  font-size: 17px; line-height: 1.3; color: var(--limestone); margin-bottom: 10px;
+}
+.card-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.meta-item { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; font-family: sans-serif; }
+.meta-item strong { color: var(--gold); }
+.card-footer { border-top: 1px solid var(--border); padding: 10px 14px 10px 18px; }
+.btn-ticket {
+  display: inline-block; width: 100%;
+  background: var(--gold); color: var(--espresso);
+  border: none; border-radius: 8px;
+  padding: 9px 16px; font-size: 11px; letter-spacing: 2px;
+  font-family: sans-serif; font-weight: 700; text-align: center;
+  cursor: pointer; text-decoration: none;
+}
+
+/* STATES */
+.loading, .empty {
+  text-align: center; padding: 60px 20px;
+  color: var(--muted); font-family: sans-serif; font-size: 13px;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--espresso);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 8px 0 max(env(safe-area-inset-bottom), 8px);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+  font-size: 9px; letter-spacing: 1px;
+  color: var(--muted); font-family: sans-serif;
+  cursor: pointer; padding: 4px 0;
+}
+.nav-item.active { color: var(--gold); }
+.nav-icon { font-size: 18px; }
+
+/* DIVIDER LINE */
+.gold-line { width: 32px; height: 1px; background: var(--gold-dim); margin: 0 auto 16px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="logo">WR P<span>T</span></div>
+      <div class="logo-sub">CYPRUS · EVENTS</div>
+    </div>
+    <div class="lang-toggle">
+      <button class="lang-btn active" data-lang="ru" onclick="setLang('ru')">RU</button>
+      <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search" type="text" id="search" placeholder="Search events...">
+  </div>
+  <div class="cats" id="cats"></div>
+</div>
+
+<div class="events" id="events">
+  <div class="loading"><div class="spinner"></div><div id="loading-text">Loading...</div></div>
+</div>
+
+<nav class="bottom-nav">
+  <div class="nav-item active">
+    <div class="nav-icon">◈</div>
+    <span id="nav-home">Events</span>
+  </div>
+  <div class="nav-item">
+    <div class="nav-icon">◷</div>
+    <span id="nav-soon">Soon</span>
+  </div>
+  <div class="nav-item">
+    <div class="nav-icon">◎</div>
+    <span id="nav-map">Map</span>
+  </div>
+</nav>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+// ── TRANSLATIONS ─────────────────────────────────────────────
+const T = {
+  ru: {
+    search: "Поиск событий...",
+    loading: "Загружаем события...",
+    empty: "Событий не найдено",
+    tickets: "БИЛЕТЫ И ПОДРОБНОСТИ",
+    navHome: "События", navSoon: "Скоро", navMap: "Карта",
+    cats: {
+      all:"🌟 Все", nightlife:"🎉 Вечеринки", music:"🎶 Музыка",
+      art:"🎨 Арт", food:"🍷 Еда & Вино", networking:"🎤 Нетворкинг",
+      culture:"📖 Культура", outdoor:"🌊 Природа", sport:"🏃 Спорт", kids:"👶 Дети"
+    }
+  },
+  en: {
+    search: "Search events...",
+    loading: "Loading events...",
+    empty: "No events found",
+    tickets: "TICKETS & DETAILS",
+    navHome: "Events", navSoon: "Soon", navMap: "Map",
+    cats: {
+      all:"🌟 All", nightlife:"🎉 Parties", music:"🎶 Music",
+      art:"🎨 Art", food:"🍷 Food & Wine", networking:"🎤 Networking",
+      culture:"📖 Culture", outdoor:"🌊 Outdoor", sport:"🏃 Sport", kids:"👶 Kids"
+    }
+  }
+};
+
+const CAT_EMOJI = {
+  nightlife:"🎉", music:"🎶", art:"🎨", food:"🍷",
+  networking:"🎤", culture:"📖", outdoor:"🌊", sport:"🏃", kids:"👶", other:"📌"
+};
+
+const CAT_COLOR = {
+  nightlife:"#C04A26", music:"#C9A84C", art:"#6F7A3B", food:"#C9A84C",
+  networking:"#C04A26", culture:"#6F7A3B", outdoor:"#6F7A3B", sport:"#C04A26",
+  kids:"#C9A84C", other:"#C9A84C"
+};
+
+let lang = "ru";
+let currentCat = "all";
+let allEvents = [];
+let searchQuery = "";
+let fbReady = false;
+
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll(".lang-btn").forEach(b => b.classList.toggle("active", b.dataset.lang === l));
+  document.getElementById("search").placeholder = T[l].search;
+  document.getElementById("loading-text").textContent = T[l].loading;
+  document.getElementById("nav-home").textContent = T[l].navHome;
+  document.getElementById("nav-soon").textContent = T[l].navSoon;
+  document.getElementById("nav-map").textContent = T[l].navMap;
+  renderCats();
+  render();
+}
+
+function renderCats() {
+  const cats = ["all","nightlife","music","art","food","networking","culture","outdoor","sport","kids"];
+  document.getElementById("cats").innerHTML = cats.map(c =>
+    `<button class="cat-btn${currentCat===c?' active':''}" data-cat="${c}" onclick="setCat('${c}')">${T[lang].cats[c]}</button>`
+  ).join("");
+}
+
+function setCat(cat) {
+  currentCat = cat;
+  renderCats();
+  document.getElementById("events").innerHTML = `<div class="loading"><div class="spinner"></div>${T[lang].loading}</div>`;
+  loadEvents();
+}
+
+function escHtml(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function getTitle(e) {
+  if (lang === "en" && e.title_en) return e.title_en;
+  return e.title || "";
+}
+
+function getBody(e) {
+  if (lang === "en" && e.full_text_en) return e.full_text_en;
+  return "";
+}
+
+function render() {
+  const q = searchQuery.toLowerCase();
+  const filtered = allEvents.filter(e => {
+    if (currentCat !== "all" && e.category !== currentCat) return false;
+    if (!q) return true;
+    return ((e.title||"")+" "+(e.full_text||"")+" "+(e.venue||"")).toLowerCase().includes(q);
+  });
+
+  const el = document.getElementById("events");
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty">◈<br><br>${T[lang].empty}</div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(e => {
+    const title = escHtml(getTitle(e));
+    const cat = e.category || "other";
+    const emoji = CAT_EMOJI[cat] || "📌";
+    const catColor = CAT_COLOR[cat] || "#C9A84C";
+    const catLabel = (T[lang].cats[cat] || "").replace(/^[^\s]+\s/, ""); // без эмодзи
+    const hasUrl = e.url && e.url.startsWith("http");
+
+    let meta = "";
+    if (e.date) meta += `<span class="meta-item">📅 ${escHtml(e.date)}</span>`;
+    if (e.venue) meta += `<span class="meta-item">📍 ${escHtml(e.venue)}</span>`;
+    else if (e.city && e.city !== "Cyprus") meta += `<span class="meta-item">📍 ${escHtml(e.city)}</span>`;
+    if (e.price) meta += `<span class="meta-item">💰 <strong>${escHtml(e.price)}</strong></span>`;
+
+    return `
+    <div class="card" onclick="${hasUrl ? `openUrl('${e.url.replace(/'/g,"\\'")}')` : ''}">
+      <div class="card-cat-bar" style="background:${catColor};"></div>
+      <div class="card-body">
+        <div class="card-top">
+          <div class="card-cat-label">${catLabel}</div>
+          <div class="card-emoji">${emoji}</div>
+        </div>
+        <div class="card-title">${title}</div>
+        ${meta ? `<div class="card-meta">${meta}</div>` : ""}
+      </div>
+      ${hasUrl ? `<div class="card-footer"><button class="btn-ticket" onclick="event.stopPropagation();openUrl('${e.url.replace(/'/g,"\\'")}')">🎟 ${T[lang].tickets}</button></div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function openUrl(url) {
+  if (tg) tg.openLink(url);
+  else window.open(url, "_blank");
+}
+
+async function loadEvents() {
+  if (!fbReady) return;
+  try {
+    const { collection, query, where, orderBy, limit, getDocs } = window._fs;
+    const db = window._db;
+    let q;
+    if (currentCat === "all") {
+      q = query(collection(db,"events"), orderBy("created_at","desc"), limit(100));
+    } else {
+      q = query(collection(db,"events"), where("category","==",currentCat), orderBy("created_at","desc"), limit(50));
+    }
+    const snap = await getDocs(q);
+    allEvents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  } catch(e) {
+    document.getElementById("events").innerHTML = `<div class="empty">⚠ ${e.message}</div>`;
+  }
+}
+
+// Search
+let st;
+document.getElementById("search").addEventListener("input", e => {
+  clearTimeout(st);
+  st = setTimeout(() => { searchQuery = e.target.value; render(); }, 250);
+});
+
+// Init
+setLang("ru");
+
+function waitForFirebase() {
+  if (window._db && window._fs) {
+    fbReady = true;
+    loadEvents();
+  } else {
+    setTimeout(waitForFirebase, 100);
+  }
+}
+waitForFirebase();
+</script>
+</body>
+</html>
