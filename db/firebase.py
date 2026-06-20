@@ -12,13 +12,18 @@ def get_db():
         return _db
 
     if not firebase_admin._apps:
-        sa_path = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "data/serviceAccount.json")
-        if not os.path.exists(sa_path):
-            raise FileNotFoundError(
-                f"Firebase serviceAccount.json не найден: {sa_path}\n"
-                "Скачай его из Firebase Console → Project Settings → Service Accounts"
-            )
-        cred = credentials.Certificate(sa_path)
+        sa_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+        if sa_json:
+            import json, tempfile
+            tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+            tmp.write(sa_json)
+            tmp.close()
+            cred = credentials.Certificate(tmp.name)
+        else:
+            sa_path = os.environ.get("FIREBASE_SERVICE_ACCOUNT", "data/serviceAccount.json")
+            if not os.path.exists(sa_path):
+                raise FileNotFoundError(f"Firebase serviceAccount.json не найден: {sa_path}")
+            cred = credentials.Certificate(sa_path)
         firebase_admin.initialize_app(cred)
 
     _db = firestore.client()

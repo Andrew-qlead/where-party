@@ -6,6 +6,7 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
 API_ID = int(os.environ.get("TELEGRAM_API_ID", 0))
 API_HASH = os.environ.get("TELEGRAM_API_HASH", "")
 SESSION_FILE = "data/tg_session"
+SESSION_STRING = os.environ.get("TG_SESSION_STRING", "")
 PHOTO_DIR = "data/photos"
 
 SOURCE_CHANNELS = [
@@ -85,7 +86,9 @@ async def fetch_tg_events(limit_per_channel: int = 30) -> list[dict]:
 
     events = []
 
-    async with TelegramClient(SESSION_FILE, API_ID, API_HASH) as client:
+    from telethon.sessions import StringSession
+    session = StringSession(SESSION_STRING) if SESSION_STRING else SESSION_FILE
+    async with TelegramClient(session, API_ID, API_HASH) as client:
         for channel in SOURCE_CHANNELS:
             channel_events = []
             try:
