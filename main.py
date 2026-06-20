@@ -54,6 +54,15 @@ def main():
     for event in all_events:
         event["category"] = categorize(event)
 
+    # Перевод на английский (title_en, full_text_en)
+    from bot.translator import translate_to_english
+    for event in all_events:
+        if not event.get("title_en"):
+            event["title_en"] = translate_to_english(event.get("title", ""))
+        if not event.get("full_text_en"):
+            src = event.get("full_text") or event.get("title") or ""
+            event["full_text_en"] = translate_to_english(src[:1000])
+
     # Firebase
     if USE_FIREBASE:
         new_in_db = save_events_batch(all_events)
