@@ -1,4 +1,9 @@
-data/posted_ids.json
+.env
+data/tg_session*
+data/serviceAccount.json
+data/photos/
+data/posted_*.json
 __pycache__/
 *.pyc
-.env
+*.pyo
+.DS_Store
