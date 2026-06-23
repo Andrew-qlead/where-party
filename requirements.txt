@@ -7,3 +7,4 @@ firebase-admin
 deepl
 deep-translator
 rapidfuzz
+instaloader

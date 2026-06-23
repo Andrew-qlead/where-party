@@ -10,6 +10,7 @@ from parsers.eventbrite_parser import fetch_events_cyprus as fetch_eventbrite
 from parsers.incyprus_parser import fetch_events_incyprus
 from parsers.timeout_parser import fetch_events_timeout
 from parsers.web_parser import fetch_events_web
+from parsers.instagram_parser import fetch_events_instagram
 from bot.poster import post_new_events, format_post
 from bot.formatter_en import format_post_en
 from db.categorizer import categorize
@@ -39,6 +40,7 @@ def main():
     all_events += fetch_events_incyprus()
     all_events += fetch_events_timeout()
     all_events += fetch_events_web()
+    all_events += fetch_events_instagram()
 
     print(f"Всего событий собрано: {len(all_events)}")
 
