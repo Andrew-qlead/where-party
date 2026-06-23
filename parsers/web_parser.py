@@ -132,7 +132,8 @@ NOISE_PHRASES = [
     "prime minister", "government", "ceasefire", "war", "conflict", "troops",
     "judge orders", "stand trial", "bars her from", "protest", "rally",
     # погода / инфраструктура / происшествия
-    "braces for", "heat wave", "meteorolog", "автобус протаранил",
+    "braces for", "heat wave", "heat dome", "extreme heat", "deadly furnace",
+    "prolonged extreme", "faces prolonged", "turns europe", "meteorolog", "автобус протаранил",
     "памятные мероприятия", "годовщине начала", "великой отечест",
     # аварии / происшествия / смерть
     "road fatalities", "road deaths", "road accident", "traffic accident",
