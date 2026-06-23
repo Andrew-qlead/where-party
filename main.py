@@ -91,9 +91,16 @@ def main():
 
     print(f"После фильтра по дате: {len(filtered)} (было {len(all_events)})")
 
-    # Фильтр качества — только события с оценкой >= 1
-    from parsers.web_parser import _quality_score
-    all_events = [e for e in filtered if e.get("source") == "tg" or _quality_score(e) >= 1]
+    # Noise-фильтр применяем ко ВСЕМ источникам (включая TG и kiprinform)
+    from parsers.web_parser import _quality_score, _is_event, NOISE_PHRASES
+    def _is_noise_global(event: dict) -> bool:
+        text = ((event.get("title") or "") + " " + (event.get("full_text") or "")).lower()
+        return any(p in text for p in NOISE_PHRASES)
+
+    all_events = [e for e in filtered if not _is_noise_global(e)]
+
+    # Фильтр качества — только события с оценкой >= 1 (кроме TG без описания)
+    all_events = [e for e in all_events if e.get("source") == "tg" or _quality_score(e) >= 1]
     print(f"После фильтра качества: {len(all_events)}")
 
     # Категоризация + извлечение города

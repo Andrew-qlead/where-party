@@ -133,8 +133,15 @@ NOISE_PHRASES = [
     "judge orders", "stand trial", "bars her from", "protest", "rally",
     # погода / инфраструктура / происшествия
     "braces for", "heat wave", "heat dome", "extreme heat", "deadly furnace",
-    "prolonged extreme", "faces prolonged", "turns europe", "meteorolog", "автобус протаранил",
+    "prolonged extreme", "faces prolonged", "turns europe", "meteorolog",
+    "clear weather", "isolated showers", "thunderstorms", "cloud cover",
+    "weather forecast", "погода на", "прогноз погоды", "осадки", "облачность",
+    "mostly clear", "автобус протаранил",
+    # спорт-новости (не соревнования для участников)
+    "offshore sailing race", "offshore race", "to compete in", "aegean 600",
+    # политика / памятные даты
     "памятные мероприятия", "годовщине начала", "великой отечест",
+    "годовщина", "день победы", "anniversary of",
     # аварии / происшествия / смерть
     "road fatalities", "road deaths", "road accident", "traffic accident",
     "car crash", "fatal crash", "killed in", "died in", "fatalities",
