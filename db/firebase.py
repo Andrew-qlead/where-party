@@ -48,6 +48,7 @@ def save_event(event: dict) -> bool:
             **event,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "posted_tg": False,
+            "posted_tg_en": False,
             "posted_threads": False,
             "posted_instagram": False,
         })
@@ -77,9 +78,10 @@ def save_events_batch(events: list[dict]) -> int:
 
         batch.set(ref, {
             **event,
-            "photo_path": None,  # не храним локальные пути
+            "photo_path": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "posted_tg": False,
+            "posted_tg_en": False,
             "posted_threads": False,
             "posted_instagram": False,
         })

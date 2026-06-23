@@ -418,17 +418,37 @@ function getTitle(e) { return (lang === "en" && e.title_en) ? e.title_en : (e.ti
 function getBody(e) { return (lang === "en" && e.full_text_en) ? e.full_text_en : (e.full_text || ""); }
 
 const RU_MONTHS = { "января":0,"февраля":1,"марта":2,"апреля":3,"мая":4,"июня":5,"июля":6,"августа":7,"сентября":8,"октября":9,"ноября":10,"декабря":11 };
+const EN_MONTHS_MAP = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11,
+  january:0,february:1,march:2,april:3,june:5,july:6,august:7,september:8,october:9,november:10,december:11 };
+
 function parseEventDate(str) {
   if (!str) return null;
+  // "2026-06-30"
   if (/^\d{4}-\d{2}-\d{2}/.test(str)) return new Date(str);
-  const d1 = new Date(str);
-  if (!isNaN(d1)) return d1;
-  const m = str.match(/(\d{1,2})\s+([а-яёА-ЯЁ]+)\s*[,]?\s*(\d{4})?/);
-  if (m) {
-    const day = parseInt(m[1]);
-    const mon = RU_MONTHS[m[2].toLowerCase()];
-    const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
-    if (mon !== undefined) return new Date(year, mon, day);
+  // "30 Jun 2026" или "30 June 2026" (формат Firebase)
+  const mEn = str.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+  if (mEn) {
+    const mon = EN_MONTHS_MAP[mEn[2].toLowerCase()];
+    if (mon !== undefined) return new Date(parseInt(mEn[3]), mon, parseInt(mEn[1]));
+  }
+  // "30 Jun" без года — текущий год
+  const mEnNoYear = str.match(/^(\d{1,2})\s+([A-Za-z]+)$/);
+  if (mEnNoYear) {
+    const mon = EN_MONTHS_MAP[mEnNoYear[2].toLowerCase()];
+    if (mon !== undefined) return new Date(new Date().getFullYear(), mon, parseInt(mEnNoYear[1]));
+  }
+  // "30 июня 2026" (русский с годом)
+  const mRu = str.match(/(\d{1,2})\s+([а-яёА-ЯЁ]+)\s*[,]?\s*(\d{4})/);
+  if (mRu) {
+    const mon = RU_MONTHS[mRu[2].toLowerCase()];
+    const year = parseInt(mRu[3]);
+    if (mon !== undefined) return new Date(year, mon, parseInt(mRu[1]));
+  }
+  // "30 июня" без года
+  const mRuNoYear = str.match(/(\d{1,2})\s+([а-яёА-ЯЁ]+)/);
+  if (mRuNoYear) {
+    const mon = RU_MONTHS[mRuNoYear[2].toLowerCase()];
+    if (mon !== undefined) return new Date(new Date().getFullYear(), mon, parseInt(mRuNoYear[1]));
   }
   return null;
 }
@@ -508,9 +528,45 @@ function matchCity(e) {
   return c.includes(currentCity.toLowerCase()) || (currentCity === "Limassol" && (c.includes("lemesos") || c.includes("limassol")));
 }
 
+const MINIAPP_NOISE = [
+  // спортивные новости
+  "breaks record","world record","premier league","super rugby","transfer","signing",
+  "squad","thrash","group a:","group b:","group c:","group d:","match report",
+  "lodge fifa","travel restrictions","ronaldo","arsenal","manchester","barcelona",
+  "waltham cross",
+  // политика/погода/происшествия
+  "braces for","meteorolog","judge orders","stand trial",
+  "dies at","passed away","parliament","government","ceasefire","conflict",
+  "stock market","nasdaq","bitcoin price",
+  // сетевой/инвест-спам
+  "networking club","закрытая встреча","иммиграционными",
+  "автобус протаранил","памятные мероприятия","годовщине начала",
+  // архивные сводки от vkcyprus
+  "события культуры","куда пойти на выходных","чем заняться на выходных",
+  "афиша на выходные","события: август","события: июнь","события: июль","события: сентябрь",
+];
+const MINIAPP_BAD_SOURCES = ["cyprus-mail-sport","cyprus-mail-athletics"];
+
+// Заголовки с устаревшим годом (2013–2025)
+const OLD_YEAR_RE = /\b20(1[3-9]|2[0-5])\b/;
+
+function isNoise(e) {
+  if (MINIAPP_BAD_SOURCES.includes(e.source)) return true;
+  const title = (e.title||"");
+  if (OLD_YEAR_RE.test(title)) return true;
+  const text = (title+" "+(e.full_text||"")).toLowerCase();
+  if (MINIAPP_NOISE.some(p => text.includes(p))) return true;
+  // Общие «что делать на выходных» сводки и спорт-матчи
+  if (/^(what.s on this|match in|матч|сводка)/i.test(title)) return true;
+  if (/^афиша[:\s]*(мероприятий|на выходные)/i.test(title)) return true;
+  if (/^«?пейте вино/i.test(title)) return true;
+  return false;
+}
+
 function render() {
   const q = searchQuery.toLowerCase();
   const filtered = allEvents.filter(e => {
+    if (isNoise(e)) return false;
     if (isExpired(e)) return false;
     if (currentCat !== "all" && e.category !== currentCat) return false;
     if (!matchCity(e)) return false;

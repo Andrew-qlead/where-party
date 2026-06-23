@@ -62,6 +62,20 @@ RSS_SOURCES = [
         "city": "Cyprus",
         "filter": True,
     },
+    # ── Официальный туристический портал Кипра ───────────────────
+    {
+        "url": "https://www.visitcyprus.com/events/feed/",
+        "name": "visitcyprus",
+        "city": "Cyprus",
+        "filter": False,  # уже категория events
+    },
+    # ── Развлечения / культура Cyprus Mail ────────────────────────
+    {
+        "url": "https://cyprus-mail.com/category/entertainment/feed/",
+        "name": "cyprus-mail-entertainment",
+        "city": "Cyprus",
+        "filter": True,  # есть TV-рецензии и интервью — фильтруем
+    },
     # cyprus-mail sport/athletics отключены — дают новостные статьи, не афишу
     # ── Дети / семья ──────────────────────────────────────────────
     {
@@ -102,15 +116,29 @@ def _clean(text: str) -> str:
 
 
 NOISE_PHRASES = [
-    # спортивные новости (не события)
+    # спортивные новости (результаты, трансферы, рейтинги — не афиша)
     "breaks record", "world record", "championship parade", "must ditch",
-    "wake-up call", "after morocco", "knicks", "nba", "premier league",
+    "wake-up call", "knicks", "nba", "premier league", "super rugby",
     "transfer", "signing", "squad", "coach sacked", "fired", "appointed",
+    "thrash", "blunt attack", "sends mexico", "hold out", "scores twice",
+    "ten-man", "hosts promoted", "lodge fifa", "travel restrictions",
+    "hurricanes thrash", "world cup", "olympic", "paralympic", "champion",
+    "ronaldo", "messi", "arsenal", "manchester", "barcelona", "real madrid",
+    "group a:", "group b:", "group c:", "group d:", "match report",
+    # не-кипрские события
+    "waltham cross", "returns for summer 2026",
     # политика / некрологи
-    "dies at", "passed away", "obituary", "election", "parliament", "minister",
+    "dies at", "passed away", "obituary", "election", "parliament",
     "prime minister", "government", "ceasefire", "war", "conflict", "troops",
+    "judge orders", "stand trial", "bars her from", "protest", "rally",
+    # погода / инфраструктура / происшествия
+    "braces for", "heat wave", "meteorolog", "автобус протаранил",
+    "памятные мероприятия", "годовщине начала", "великой отечест",
     # финансовые новости
     "stock", "shares", "nasdaq", "crypto crash", "bitcoin price",
+    # сетевой/инвестиционный спам
+    "resource networking club", "закрытая встреча для инвесторов",
+    "иммиграционными экспертами", "save the date",
 ]
 
 def _is_event(title: str, desc: str) -> bool:
@@ -248,6 +276,9 @@ def _parse_rss(xml: str, source_name: str, city: str, do_filter: bool, extra_key
 
         date_str = _extract_event_date(title + " " + desc, pub_date)
         eid = f"{source_name}_{re.sub(r'[^a-z0-9]', '', title.lower()[:35])}"
+
+        # убираем дату из конца заголовка: "Event name – 30.6.2026" → "Event name"
+        title = re.sub(r'\s*[–\-—]\s*\d{1,2}[./]\d{1,2}[./]\d{4}\s*$', '', title).strip()
 
         events.append({
             "id": eid,

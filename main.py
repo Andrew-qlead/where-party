@@ -80,8 +80,12 @@ def main():
     filtered = []
     for event in all_events:
         d = _parse_event_date(event.get("date", ""))
+        source = event.get("source", "")
         if d is None:
-            filtered.append(event)  # нет даты — берём (Telegram события часто без даты)
+            # RSS без читаемой даты — выбрасываем (старые архивные посты)
+            # TG без даты — берём (у телеграм-постов часто нет даты события)
+            if source == "tg":
+                filtered.append(event)
         elif cutoff_past <= d <= cutoff_future:
             filtered.append(event)
 

@@ -7,20 +7,21 @@ load_dotenv()
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 API = f"https://api.telegram.org/bot{TOKEN}"
+MINIAPP_URL = "https://andrew-qlead.github.io/where-party/"
 
-WELCOME_RU = (
-    "👇 Нажми кнопку «тык» внизу экрана ↓\n"
-    "Там вся афиша Кипра — вечеринки, концерты, выставки и многое другое."
-)
-WELCOME_EN = (
-    "👇 Tap the «тык» button at the bottom of the screen ↓\n"
-    "Find all Cyprus events — parties, concerts, exhibitions and more."
-)
+WELCOME_RU = "🗓 Все события Кипра в одном месте — концерты, вечеринки, выставки, спорт."
+WELCOME_EN = "🗓 All Cyprus events in one place — concerts, parties, art, sport and more."
 
 def send_welcome(chat_id: int):
     requests.post(f"{API}/sendMessage", json={
         "chat_id": chat_id,
         "text": WELCOME_RU,
+        "reply_markup": {
+            "inline_keyboard": [[{
+                "text": "📅 Открыть афишу",
+                "web_app": {"url": MINIAPP_URL}
+            }]]
+        }
     })
 
 def get_updates(offset: int = 0):
