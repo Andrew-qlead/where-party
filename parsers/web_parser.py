@@ -131,6 +131,10 @@ NOISE_PHRASES = [
     "dies at", "passed away", "obituary", "election", "parliament",
     "prime minister", "government", "ceasefire", "war", "conflict", "troops",
     "judge orders", "stand trial", "bars her from", "protest", "rally",
+    "erdogan", "trump", "nato", "biden", "putin", "zelensky", "macron",
+    "orders talks", "turkish president", "orders officials", "president orders",
+    "seminary", "diplomatic", "sanctions", "foreign minister", "summit",
+    "white house", "kremlin", "pentagon", "european commission",
     # погода / инфраструктура / происшествия
     "braces for", "heat wave", "heat dome", "extreme heat", "deadly furnace",
     "prolonged extreme", "faces prolonged", "turns europe", "meteorolog",
