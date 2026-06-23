@@ -137,8 +137,6 @@ NOISE_PHRASES = [
     "clear weather", "isolated showers", "thunderstorms", "cloud cover",
     "weather forecast", "погода на", "прогноз погоды", "осадки", "облачность",
     "mostly clear", "автобус протаранил",
-    # спорт-новости (не соревнования для участников)
-    "offshore sailing race", "offshore race", "to compete in", "aegean 600",
     # политика / памятные даты
     "памятные мероприятия", "годовщине начала", "великой отечест",
     "годовщина", "день победы", "anniversary of",
