@@ -56,12 +56,7 @@ RSS_SOURCES = [
         "city": "Cyprus",
         "filter": True,
     },
-    {
-        "url": "https://en.philenews.com/feed/",
-        "name": "philenews",
-        "city": "Cyprus",
-        "filter": True,
-    },
+    # philenews отключён — 90% политика и общие новости, не афиша
     # ── Официальный туристический портал Кипра ───────────────────
     {
         "url": "https://www.visitcyprus.com/events/feed/",
