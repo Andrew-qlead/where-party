@@ -22,72 +22,92 @@ def save_posted_ids(ids: set, path: str = "data/posted_ids.json"):
 
 # ── Форматирование ────────────────────────────────────────────────────────────
 
-def strip_markdown(text: str) -> str:
-    text = re.sub(r'\*+', '', text)
-    text = re.sub(r'_+', '', text)
-    text = re.sub(r'`+', '', text)
+def _clean_title(text: str) -> str:
+    text = re.sub(r'\*+|_+|`+', '', text)
     return text.strip()
 
-def extract_title_and_body(full_text: str) -> tuple[str, str]:
-    lines = [l for l in full_text.splitlines() if l.strip()]
-    if not lines:
-        return "", ""
-    title = strip_markdown(lines[0])[:80]
-    body_lines = [strip_markdown(l) for l in lines[1:] if len(strip_markdown(l)) > 3]
-    return title, "\n".join(body_lines[:4])
+def _short_body(full_text: str, title: str) -> str:
+    lines = [l.strip() for l in full_text.splitlines() if len(l.strip()) > 10]
+    # пропускаем первую строку если совпадает с заголовком
+    if lines and lines[0].lower()[:50] == title.lower()[:50]:
+        lines = lines[1:]
+    # берём первые 2 предложения из первых строк
+    text = " ".join(lines[:3])
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    return " ".join(sentences[:2])[:280]
 
-def pick_emoji(title: str) -> str:
-    t = title.lower()
-    if any(w in t for w in ["music","concert","festival","jazz","dj","live","саксофон","хор","виолончель"]):
+CATEGORY_EMOJI = {
+    "music": "🎶", "nightlife": "🎉", "art": "🎨", "food": "🍷",
+    "networking": "🎤", "culture": "📖", "outdoor": "🌊",
+    "sport": "🏃", "kids": "👶", "other": "📅",
+}
+
+def pick_emoji(event: dict) -> str:
+    cat = event.get("category", "")
+    if cat in CATEGORY_EMOJI:
+        return CATEGORY_EMOJI[cat]
+    t = (event.get("title") or "").lower()
+    if any(w in t for w in ["music","concert","festival","jazz","dj","live","саксофон","хор"]):
         return "🎶"
     if any(w in t for w in ["party","night","club","rave","вечеринка"]):
         return "🎉"
-    if any(w in t for w in ["art","exhibition","gallery","выставка","искусств"]):
+    if any(w in t for w in ["art","exhibition","gallery","выставка"]):
         return "🎨"
-    if any(w in t for w in ["food","dinner","brunch","wine","chef","restaurant","вино","коктейль"]):
+    if any(w in t for w in ["food","dinner","wine","restaurant","вино"]):
         return "🍷"
-    if any(w in t for w in ["yoga","sport","run","fitness","велопрогулка","скейт"]):
+    if any(w in t for w in ["yoga","run","fitness","sport"]):
         return "🏃"
-    if any(w in t for w in ["book","lecture","talk","meetup","networking","книг","клуб"]):
-        return "🎤"
-    if any(w in t for w in ["kids","children","дети","детск"]):
+    if any(w in t for w in ["kids","children","дети"]):
         return "👶"
-    if any(w in t for w in ["beach","outdoor","природ","sunset","море"]):
-        return "🌊"
-    return "📌"
+    return "📅"
+
+def fetch_og_image(url: str) -> str:
+    """Пробуем получить og:image со страницы события."""
+    if not url or not url.startswith("http"):
+        return ""
+    try:
+        r = requests.get(url, timeout=6, headers={"User-Agent": "Mozilla/5.0"})
+        if not r.ok:
+            return ""
+        m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', r.text, re.I)
+        if not m:
+            m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', r.text, re.I)
+        return m.group(1) if m else ""
+    except Exception:
+        return ""
 
 def format_post(event: dict) -> str:
-    full_text = event.get("full_text", "")
-    if full_text:
-        title, body = extract_title_and_body(full_text)
-    else:
-        title = strip_markdown(event.get("title", ""))
-        body = ""
+    title = _clean_title(event.get("title") or "")
+    body = _short_body(event.get("full_text") or "", title)
+    emoji = pick_emoji(event)
 
-    emoji = pick_emoji(title)
-    divider = "━" * 15
-    lines = [divider, f"{emoji} {title.upper()}", divider, ""]
+    lines = [f"{emoji} {title}", ""]
 
+    # дата · место · цена в одну строку
+    meta_parts = []
     if event.get("date"):
-        line = f"📅 {event['date']}"
-        if event.get("venue"):
-            line += f" · {event['venue']}"
-        elif event.get("city") and event["city"] != "Cyprus":
-            line += f" · {event['city']}"
-        lines.append(line)
-    elif event.get("venue"):
-        lines.append(f"📍 {event['venue']}")
-
+        meta_parts.append(event["date"])
+    venue = event.get("venue") or ""
+    city = event.get("city") or ""
+    if venue:
+        meta_parts.append(venue)
+    elif city and city != "Cyprus":
+        meta_parts.append(city)
     if event.get("price"):
-        lines.append(f"💰 {event['price']}")
+        meta_parts.append(event["price"])
+    if meta_parts:
+        lines.append(" · ".join(meta_parts))
+        lines.append("")
 
     if body:
-        lines += ["", body]
+        lines.append(body)
+        lines.append("")
 
     if event.get("url"):
-        lines += ["", "🔗 Подробности ↓", event["url"]]
+        lines.append(f"🎟 Подробности → {event['url']}")
+        lines.append("")
 
-    lines += ["", _hashtags(event)]
+    lines.append(_hashtags(event))
     return "\n".join(lines)
 
 
@@ -183,6 +203,9 @@ def post_new_events(events: list, channel_override: str = None, formatter=None):
 
         text = fmt(event)
         photo_url = event.get("photo_url", "")
+
+        if not photo_url or not photo_url.startswith("http"):
+            photo_url = fetch_og_image(event.get("url", ""))
 
         if photo_url and photo_url.startswith("http"):
             ok = send_photo_url(photo_url, text, channel)

@@ -134,6 +134,11 @@ NOISE_PHRASES = [
     # погода / инфраструктура / происшествия
     "braces for", "heat wave", "meteorolog", "автобус протаранил",
     "памятные мероприятия", "годовщине начала", "великой отечест",
+    # аварии / происшествия / смерть
+    "road fatalities", "road deaths", "road accident", "traffic accident",
+    "car crash", "fatal crash", "killed in", "died in", "fatalities",
+    "reduction in road", "road safety report", "etsc", "per cent reduction",
+    "записи скорой", "дтп", "авария на",
     # финансовые новости
     "stock", "shares", "nasdaq", "crypto crash", "bitcoin price",
     # сетевой/инвестиционный спам

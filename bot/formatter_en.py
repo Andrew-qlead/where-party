@@ -1,48 +1,36 @@
 import re
-from bot.poster import _hashtags
-
-CATEGORY_EMOJI = {
-    "music": "🎶", "nightlife": "🎉", "art": "🎨", "food": "🍷",
-    "networking": "🎤", "culture": "📖", "outdoor": "🌊",
-    "sport": "🏃", "kids": "👶", "other": "📌",
-}
+from bot.poster import _hashtags, _clean_title, _short_body, pick_emoji
 
 def format_post_en(event: dict) -> str:
-    # Используем уже переведённые поля (сохранены при парсинге)
-    title = event.get("title_en") or event.get("title", "")
-    body = event.get("full_text_en") or event.get("full_text", "")
+    title = _clean_title(event.get("title_en") or event.get("title") or "")
+    full_text = event.get("full_text_en") or event.get("full_text") or ""
+    body = _short_body(full_text, title)
+    emoji = pick_emoji(event)
 
-    title = re.sub(r'\*+|_+|`+', '', title).strip()[:80]
+    lines = [f"{emoji} {title}", ""]
 
-    # Берём первые 4 строки тела
-    body_lines = [l.strip() for l in body.splitlines() if len(l.strip()) > 3]
-    # Пропускаем первую строку если она совпадает с заголовком
-    if body_lines and body_lines[0].lower().strip() == title.lower().strip():
-        body_lines = body_lines[1:]
-    body_short = "\n".join(body_lines[:4])
-
-    emoji = CATEGORY_EMOJI.get(event.get("category", ""), "📌")
-    divider = "━" * 15
-    lines = [divider, f"{emoji} {title.upper()}", divider, ""]
-
+    meta_parts = []
     if event.get("date"):
-        line = f"📅 {event['date']}"
-        if event.get("venue"):
-            line += f" · {event['venue']}"
-        elif event.get("city") and event["city"] != "Cyprus":
-            line += f" · {event['city']}"
-        lines.append(line)
-    elif event.get("venue"):
-        lines.append(f"📍 {event['venue']}")
-
+        meta_parts.append(event["date"])
+    venue = event.get("venue") or ""
+    city = event.get("city") or ""
+    if venue:
+        meta_parts.append(venue)
+    elif city and city != "Cyprus":
+        meta_parts.append(city)
     if event.get("price"):
-        lines.append(f"💰 {event['price']}")
+        meta_parts.append(event["price"])
+    if meta_parts:
+        lines.append(" · ".join(meta_parts))
+        lines.append("")
 
-    if body_short:
-        lines += ["", body_short]
+    if body:
+        lines.append(body)
+        lines.append("")
 
     if event.get("url"):
-        lines += ["", "🔗 Details & Tickets ↓", event["url"]]
+        lines.append(f"🎟 Tickets → {event['url']}")
+        lines.append("")
 
-    lines += ["", _hashtags(event)]
+    lines.append(_hashtags(event))
     return "\n".join(lines)
