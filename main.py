@@ -96,9 +96,16 @@ def main():
     # Noise-фильтр применяем ко ВСЕМ источникам (включая TG и kiprinform)
     from parsers.web_parser import _quality_score, NOISE_PHRASES
     from db.categorizer import categorize as _categorize_early
+    import re as _re
+    OLD_YEAR_RE = _re.compile(r'\b20(1[3-9]|2[0-5])\b')
     def _is_noise_global(event: dict) -> bool:
-        text = ((event.get("title") or "") + " " + (event.get("full_text") or "")).lower()
-        return any(p in text for p in NOISE_PHRASES)
+        title = event.get("title") or ""
+        text = (title + " " + (event.get("full_text") or "")).lower()
+        if any(p in text for p in NOISE_PHRASES):
+            return True
+        if OLD_YEAR_RE.search(title):
+            return True
+        return False
 
     all_events = [e for e in filtered if not _is_noise_global(e)]
 
