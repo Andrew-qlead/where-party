@@ -64,7 +64,8 @@ def _get_loader():
         download_comments=False,
         save_metadata=False,
         quiet=True,
-        request_timeout=15,
+        request_timeout=10,
+        max_connection_attempts=1,  # не retry при ошибке
     )
     if not IG_USERNAME or not IG_PASSWORD:
         return L
@@ -149,10 +150,18 @@ def fetch_events_instagram() -> list[dict]:
     if L is None:
         return []
 
+    # Проверяем что логин прошёл — если нет, сразу выходим без retry
+    try:
+        if not L.context.is_logged_in:
+            print("[ig] Не залогинен — пропускаем")
+            return []
+    except Exception:
+        print("[ig] Не залогинен — пропускаем")
+        return []
+
     events = []
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
 
-    # Хэштеги
     for tag in HASHTAGS:
         try:
             hashtag = instaloader.Hashtag.from_name(L.context, tag)
@@ -169,10 +178,9 @@ def fetch_events_instagram() -> list[dict]:
                 time.sleep(3)
             print(f"[ig] #{tag}: проверено {count} постов")
         except Exception as e:
-            print(f"[ig] #{tag} ошибка: {e}")
-        time.sleep(8)
+            print(f"[ig] #{tag} ошибка: {str(e)[:80]}")
+        time.sleep(5)
 
-    # Аккаунты организаторов
     for account in ACCOUNTS:
         try:
             profile = instaloader.Profile.from_username(L.context, account)
@@ -189,8 +197,8 @@ def fetch_events_instagram() -> list[dict]:
                 time.sleep(3)
             print(f"[ig] @{account}: проверено {count} постов")
         except Exception as e:
-            print(f"[ig] @{account} ошибка: {e}")
-        time.sleep(8)
+            print(f"[ig] @{account} ошибка: {str(e)[:80]}")
+        time.sleep(5)
 
     print(f"[ig] Итого событий: {len(events)}")
     return events
