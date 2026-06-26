@@ -55,6 +55,9 @@ KEYWORDS = {
     "museum": ("art", 1), "музей": ("art", 1),
 
     # FOOD & WINE
+    "market": ("food", 1), "рынок": ("food", 1), "базар": ("food", 1), "ярмарка": ("food", 1),
+    "flea market": ("culture", 2), "блошиный рынок": ("culture", 2),
+    "vinyl market": ("culture", 2), "виниловый базар": ("culture", 2), "vinyl bazaar": ("culture", 2),
     "wine tasting": ("food", 2), "дегустация вина": ("food", 2),
     "food festival": ("food", 2), "фестиваль еды": ("food", 2),
     "street food": ("food", 2), "стрит-фуд": ("food", 2),
