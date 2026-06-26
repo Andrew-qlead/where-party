@@ -107,14 +107,9 @@ def main():
     # TG-каналы доверяем полностью
     strict = []
     for e in all_events:
-        if e.get("source") == "tg":
-            strict.append(e)
-            continue
-        if _quality_score(e) < 1:
-            continue
         cat = _categorize_early(e)
         if cat != "other":
-            e["category"] = cat  # сохраняем чтобы не считать дважды
+            e["category"] = cat
             strict.append(e)
         else:
             print(f"[filter] Отброшено (not event): {e.get('title','')[:60]}")
