@@ -2,6 +2,7 @@
 # weight 2 = сильный сигнал, 1 = слабый
 KEYWORDS = {
     # MUSIC
+    "dj": ("nightlife", 2), "dj-": ("nightlife", 2),
     "concert": ("music", 2), "концерт": ("music", 2),
     "live music": ("music", 2), "живая музыка": ("music", 2),
     "orchestra": ("music", 2), "оркестр": ("music", 2),
@@ -19,6 +20,9 @@ KEYWORDS = {
     "musician": ("music", 1), "музыкант": ("music", 1),
     "музыка": ("music", 1),
     "festival of music": ("music", 2), "music festival": ("music", 2),
+    "festival": ("music", 1), "фестиваль": ("music", 1),
+    "live": ("music", 1), "лайв": ("music", 1),
+    "музыкальный вечер": ("music", 2), "music evening": ("music", 2),
 
     # NIGHTLIFE
     "nightclub": ("nightlife", 2), "ночной клуб": ("nightlife", 2),
@@ -68,6 +72,9 @@ KEYWORDS = {
     "cherry festival": ("food", 2), "черешневый фестиваль": ("food", 2),
 
     # SPORT
+    "regatta": ("sport", 2), "регата": ("sport", 2),
+    "sailing race": ("sport", 2), "yacht race": ("sport", 2),
+    "sailing": ("sport", 1), "парусный": ("sport", 1),
     "marathon": ("sport", 2), "марафон": ("sport", 2),
     "triathlon": ("sport", 2), "триатлон": ("sport", 2),
     "yoga": ("sport", 2), "йога": ("sport", 2),
@@ -100,6 +107,13 @@ KEYWORDS = {
     "релокация": ("networking", 1),
 
     # CULTURE
+    "workshop": ("culture", 2), "мастер-класс": ("culture", 2), "masterclass": ("culture", 2),
+    "master class": ("culture", 2), "воркшоп": ("culture", 2),
+    "charity": ("culture", 2), "благотворительн": ("culture", 2),
+    "paint": ("culture", 1), "рисование": ("culture", 1),
+    "craft": ("culture", 1), "творческий": ("culture", 1),
+    "квест": ("culture", 2), "quest": ("culture", 2),
+    "escape room": ("culture", 2),
     "theatre": ("culture", 2), "theater": ("culture", 2),
     "театр": ("culture", 2), "спектакль": ("culture", 2),
     "stand-up": ("culture", 2), "стендап": ("culture", 2), "stand up": ("culture", 2),
@@ -132,6 +146,9 @@ KEYWORDS = {
     "puppets": ("kids", 2), "кукольный": ("kids", 2),
 
     # OUTDOOR
+    "open water": ("outdoor", 2), "night run": ("outdoor", 2), "night race": ("outdoor", 2),
+    "trail run": ("outdoor", 2), "trail": ("outdoor", 1),
+    "wine walk": ("outdoor", 2), "city walk": ("outdoor", 2),
     "hiking": ("outdoor", 2), "поход": ("outdoor", 2), "хайкинг": ("outdoor", 2),
     "boat trip": ("outdoor", 2), "яхтенная прогулка": ("outdoor", 2),
     "sunset cruise": ("outdoor", 2), "sunset boat": ("outdoor", 2),

@@ -37,12 +37,7 @@ RSS_SOURCES = [
         "city": "Cyprus",
         "filter": False,  # концерты и события для русскоязычных
     },
-    {
-        "url": "https://kiprinform.com/en/feed/",
-        "name": "kiprinform",
-        "city": "Cyprus",
-        "filter": True,
-    },
+    # kiprinform отключён — новостной сайт, проходит аварии/погоду/политику
     # ── Афиша / культура ──────────────────────────────────────────
     {
         "url": "https://cyprus-mail.com/category/entertainment/whats-on/feed/",

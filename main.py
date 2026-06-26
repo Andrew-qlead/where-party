@@ -94,15 +94,31 @@ def main():
     print(f"После фильтра по дате: {len(filtered)} (было {len(all_events)})")
 
     # Noise-фильтр применяем ко ВСЕМ источникам (включая TG и kiprinform)
-    from parsers.web_parser import _quality_score, _is_event, NOISE_PHRASES
+    from parsers.web_parser import _quality_score, NOISE_PHRASES
+    from db.categorizer import categorize as _categorize_early
     def _is_noise_global(event: dict) -> bool:
         text = ((event.get("title") or "") + " " + (event.get("full_text") or "")).lower()
         return any(p in text for p in NOISE_PHRASES)
 
     all_events = [e for e in filtered if not _is_noise_global(e)]
 
-    # Фильтр качества — только события с оценкой >= 1 (кроме TG без описания)
-    all_events = [e for e in all_events if e.get("source") == "tg" or _quality_score(e) >= 1]
+    # Whitelist: для не-TG источников пропускаем только если событие
+    # распознаётся как конкретная категория (не "other") И quality >= 1
+    # TG-каналы доверяем полностью
+    strict = []
+    for e in all_events:
+        if e.get("source") == "tg":
+            strict.append(e)
+            continue
+        if _quality_score(e) < 1:
+            continue
+        cat = _categorize_early(e)
+        if cat != "other":
+            e["category"] = cat  # сохраняем чтобы не считать дважды
+            strict.append(e)
+        else:
+            print(f"[filter] Отброшено (not event): {e.get('title','')[:60]}")
+    all_events = strict
     print(f"После фильтра качества: {len(all_events)}")
 
     # Категоризация + извлечение города
@@ -143,6 +159,13 @@ def main():
     if TG_CHANNEL_EN and TG_CHANNEL_EN != os.environ.get("TELEGRAM_CHANNEL_ID", "") and USE_FIREBASE:
         from db.firebase import get_unposted as _get_unposted_en
         events_to_post_en = _get_unposted_en(platform="tg_en", limit=5)
+        # Переводим EN события (ранее не делалось!)
+        for event in events_to_post_en:
+            if not event.get("title_en"):
+                event["title_en"] = translate_to_english(event.get("title", ""))
+            if not event.get("full_text_en"):
+                src = event.get("full_text") or event.get("title") or ""
+                event["full_text_en"] = translate_to_english(src[:500])
         print(f"[tg-en] Постим в {TG_CHANNEL_EN}: {len(events_to_post_en)}")
         post_new_events(events_to_post_en, channel_override=TG_CHANNEL_EN, formatter=format_post_en)
 
