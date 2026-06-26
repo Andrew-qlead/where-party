@@ -581,6 +581,7 @@ function render() {
   const filtered = allEvents.filter(e => {
     if (isNoise(e)) return false;
     if (isExpired(e)) return false;
+    if (!e.category || e.category === "other") return false;
     if (currentCat !== "all" && e.category !== currentCat) return false;
     if (!matchCity(e)) return false;
     if (!q) return true;
