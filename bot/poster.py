@@ -108,15 +108,23 @@ def _is_mostly_cyrillic(text: str, threshold: float = 0.20) -> bool:
 
 
 def format_post(event: dict) -> str:
-    """Единый шаблон для RU-канала @WrPtCy."""
+    """Шаблон C3 для RU-канала @WrPtCy. URL отдельно — идёт в inline-кнопку."""
     title = _clean_title(event.get("title") or "")
     emoji = pick_emoji(event)
 
-    # Тело только если на русском
+    # Тело только если на русском (одно предложение)
     full_text = event.get("full_text") or ""
     body = _short_body(full_text, title) if _is_mostly_cyrillic(full_text) else ""
+    # Обрезаем до одного предложения
+    if body:
+        sentences = re.split(r'(?<=[.!?])\s+', body)
+        body = sentences[0][:200]
 
-    lines = [f"{emoji}  {title}", ""]
+    lines = [f"{emoji} <b>{title}</b>", ""]
+
+    if body:
+        lines.append(body)
+        lines.append("")
 
     # Дата и место
     meta_parts = []
@@ -125,29 +133,25 @@ def format_post(event: dict) -> str:
     venue = event.get("venue") or ""
     city = event.get("city") or ""
     if venue:
-        meta_parts.append(venue)
+        meta_parts.append(f"📍 {venue}")
     elif city and city not in ("Cyprus", "Кипр"):
-        meta_parts.append(city)
-    if meta_parts:
-        lines.append("  ".join(meta_parts))
-
+        meta_parts.append(f"📍 {city}")
     if event.get("price"):
-        lines.append(f"💰 {event['price']}")
-
-    if meta_parts or event.get("price"):
-        lines.append("")
-
-    if body:
-        lines.append(body)
-        lines.append("")
-
-    url = event.get("url", "")
-    if url:
-        lines.append(f"🔗 Подробнее → {url}")
+        meta_parts.append(f"💰 {event['price']}")
+    if meta_parts:
+        lines.append("  ·  ".join(meta_parts))
         lines.append("")
 
     lines.append(_hashtags(event))
     return "\n".join(lines)
+
+
+def make_button(url: str, label_ru: bool = True) -> dict | None:
+    """Inline-кнопка с URL для Telegram. None если URL пустой."""
+    if not url or not url.startswith("http"):
+        return None
+    label = "🔗 Подробнее" if label_ru else "🔗 More info"
+    return {"inline_keyboard": [[{"text": label, "url": url}]]}
 
 
 def _hashtags(event: dict) -> str:
@@ -174,35 +178,43 @@ def _hashtags(event: dict) -> str:
 
 # ── Отправка в Telegram ────────────────────────────────────────────────────────
 
-def send_text(text: str, channel: str = None) -> bool:
+def send_text(text: str, channel: str = None, reply_markup: dict = None) -> bool:
     ch = channel or CHANNEL_ID
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    tg_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": ch,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
     try:
-        r = requests.post(url, json={
-            "chat_id": ch, "text": text, "disable_web_page_preview": False
-        }, timeout=15)
+        r = requests.post(tg_url, json=payload, timeout=15)
         return r.ok
     except Exception as ex:
         print(f"[poster] send_text error: {ex}")
         return False
 
-def send_photo_url(photo_url: str, caption: str, channel: str = None) -> bool:
-    """Отправляем фото по URL. Если Telegram не может скачать — постим текст."""
+
+def send_photo_url(photo_url: str, caption: str, channel: str = None,
+                   reply_markup: dict = None) -> bool:
+    """Отправляем фото с подписью. Fallback — текст без фото."""
     ch = channel or CHANNEL_ID
-    # Пробуем через multipart (скачиваем сами и шлём как файл)
     try:
         img = requests.get(photo_url, timeout=8)
         if img.ok and img.headers.get("content-type", "").startswith("image"):
             tg_url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-            r = requests.post(tg_url, data={
-                "chat_id": ch,
-                "caption": caption[:1024],
-            }, files={"photo": ("photo.jpg", img.content, "image/jpeg")}, timeout=20)
+            payload = {"chat_id": ch, "caption": caption[:1024], "parse_mode": "HTML"}
+            if reply_markup:
+                payload["reply_markup"] = json.dumps(reply_markup)
+            r = requests.post(tg_url, data=payload,
+                              files={"photo": ("photo.jpg", img.content, "image/jpeg")},
+                              timeout=20)
             if r.ok:
                 return True
     except Exception:
         pass
-    # Fallback — без фото
     return False
 
 # ── Основная функция постинга — использует Firebase как источник правды ────────
@@ -240,23 +252,28 @@ def post_new_events(events: list, channel_override: str = None, formatter=None):
         if event.get(f"posted_{platform}"):
             continue
 
-        # Проверяем URL перед постингом — битые ссылки убираем из поста
-        if event.get("url") and not validate_url(event["url"]):
-            print(f"[poster] Битая ссылка, убираем из поста: {event.get('url', '')[:80]}")
-            event = {**event, "url": ""}  # не мутируем оригинал
+        # Проверяем URL — битые убираем
+        event_url = event.get("url", "")
+        if event_url and not validate_url(event_url):
+            print(f"[poster] Битая ссылка, убираем: {event_url[:80]}")
+            event_url = ""
 
-        text = fmt(event)
+        # Определяем язык канала для подписи кнопки
+        is_en = bool(channel_override)
+        markup = make_button(event_url, label_ru=not is_en)
+
+        text = fmt({**event, "url": ""})  # URL не в тексте — он в кнопке
         photo_url = event.get("photo_url", "")
 
         if not photo_url or not photo_url.startswith("http"):
-            photo_url = fetch_og_image(event.get("url", ""))
+            photo_url = fetch_og_image(event_url) if event_url else ""
 
         if photo_url and photo_url.startswith("http"):
-            ok = send_photo_url(photo_url, text, channel)
+            ok = send_photo_url(photo_url, text, channel, reply_markup=markup)
             if not ok:
-                ok = send_text(text, channel)
+                ok = send_text(text, channel, reply_markup=markup)
         else:
-            ok = send_text(text, channel)
+            ok = send_text(text, channel, reply_markup=markup)
 
         if ok:
             new_count += 1
