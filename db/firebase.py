@@ -59,6 +59,24 @@ def save_event(event: dict) -> bool:
         return False
 
 
+_EN_SOURCES = {
+    'cyprus-mail-whatson', 'cyprus-mail-entertainment', 'cyprus-mail-kids',
+    'visitcyprus', 'parikiaki', 'timeout', 'incyprus', 'eventbrite',
+}
+
+
+def update_translations(event_id: str, title_en: str, full_text_en: str = ""):
+    """Сохраняем переводы обратно в Firebase после перевода."""
+    try:
+        db = get_db()
+        db.collection("events").document(event_id).update({
+            "title_en": title_en,
+            "full_text_en": full_text_en,
+        })
+    except Exception as ex:
+        print(f"[firebase] update_translations error {event_id}: {ex}")
+
+
 def save_events_batch(events: list[dict]) -> int:
     """Сохраняем список событий, возвращает кол-во новых."""
     db = get_db()
@@ -76,8 +94,19 @@ def save_events_batch(events: list[dict]) -> int:
         if doc.exists:
             continue
 
+        # Для английских источников title уже на английском — сохраняем сразу без API
+        src = event.get("source", "")
+        if src in _EN_SOURCES:
+            title_en = event.get("title", "")
+            full_text_en = event.get("full_text", "")
+        else:
+            title_en = event.get("title_en", "")
+            full_text_en = event.get("full_text_en", "")
+
         batch.set(ref, {
             **event,
+            "title_en": title_en,
+            "full_text_en": full_text_en,
             "photo_path": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "posted_tg": False,

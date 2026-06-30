@@ -118,12 +118,14 @@ NOISE_PHRASES = [
     # не-кипрские события
     "waltham cross", "returns for summer 2026",
     # политика / некрологи
-    "dies at", "passed away", "obituary", "election", "parliament",
-    "prime minister", "government", "ceasefire", "war", "conflict", "troops",
+    "dies at", "passed away", "obituary", "in memoriam", "funeral",
+    "was laid to rest", "memorial service", "condolences",
+    "election", "parliament", "prime minister", "government",
+    "ceasefire", "war", "conflict", "troops", "military operation",
     "judge orders", "stand trial", "bars her from", "protest", "rally",
     "erdogan", "trump", "nato", "biden", "putin", "zelensky", "macron",
     "orders talks", "turkish president", "orders officials", "president orders",
-    "seminary", "diplomatic", "sanctions", "foreign minister", "summit",
+    "seminary", "diplomatic", "sanctions", "foreign minister",
     "white house", "kremlin", "pentagon", "european commission",
     # погода / инфраструктура / происшествия
     "braces for", "heat wave", "heat dome", "extreme heat", "deadly furnace",
@@ -134,24 +136,53 @@ NOISE_PHRASES = [
     # политика / памятные даты
     "памятные мероприятия", "годовщине начала", "великой отечест",
     "годовщина", "день победы", "anniversary of",
-    # аварии / происшествия / смерть
+    # смерть (расширенный список)
     "road fatalities", "road deaths", "road accident", "traffic accident",
     "car crash", "fatal crash", "killed in", "died in", "fatalities",
     "reduction in road", "road safety report", "etsc", "per cent reduction",
     "записи скорой", "дтп", "авария на",
+    "скончался", "скончалась", "умер ", "умерла ", "умер на", "погиб на",
+    "погиб в", "погибла", "смерть", "смерти", "похороны", "некролог",
+    "died on a flight", "man died", "woman died", "child died",
+    "body found", "тело найдено", "обнаружено тело",
+    "tragic death", "tragic accident", "in loving memory",
+    "прощание с", "гибель", "трагедия",
     # финансовые новости
-    "stock", "shares", "nasdaq", "crypto crash", "bitcoin price",
+    "stock market", "shares fell", "nasdaq", "crypto crash", "bitcoin price",
     # сетевой/инвестиционный спам
     "resource networking club", "закрытая встреча для инвесторов",
     "иммиграционными экспертами", "save the date",
-    # новостные дайджесты (утренние/вечерние обзоры)
+    # новостные дайджесты
     "утренний обзор", "вечерний обзор", "morning news review", "evening news review",
     "обзор новостей", "news review", "дайджест новостей", "новости дня",
     "morning digest", "evening digest",
-    # смерти
-    "скончался", "умер на", "погиб на", "died on a flight", "man died",
-    # мошенничество/налоги (не события)
+    # мошенничество/налоги
     "мошенничество от имени", "налоговой службы",
+    # пожары / происшествия
+    "пожар в", "лесной пожар", "fire brought under control",
+    "вспыхнул пожар", "удалось потушить", "загорелся",
+    # арест / наркотики / преступность
+    "arrested", "men arrested", "woman arrested", "police seize",
+    "drug bust", "seized", "наркотики", "задержан", "задержана", "арестован",
+    "обыск", "уголовное дело", "осуждён",
+    # дайджесты / обзоры
+    "подборк", "22 фестивал",
+    # акты насилия
+    "acts committed in the name", "name of revenge", "stabbing", "shooting",
+    "attack on", "нападение", "убийство", "ограбление",
+    # памятные мероприятия к годовщине войн
+    "памятные мероприятия к 85",
+    # сводные / рейтинговые статьи
+    "собрала звёзд", "man to face trial", "stand trial", "murder trial",
+    # репортажи о прошедших событиях (не анонсы)
+    "фотографии с", "фото с праздно", "last wednesday we celebrated",
+    "it was a very enjoyable", "everyone had a great time",
+    "отмечаем день рождения", "отпраздновали", "праздновали",
+    "photos from", "recap of", "highlights from",
+    # болезни / эпидемии
+    "outbreak", "epidemic", "pandemic", "вспышка", "заражение", "инфекция",
+    # суицид
+    "suicide", "суицид", "самоубийство",
 ]
 
 def _is_event(title: str, desc: str) -> bool:

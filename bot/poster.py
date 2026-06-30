@@ -27,6 +27,8 @@ def _clean_title(text: str) -> str:
     return text.strip()
 
 def _short_body(full_text: str, title: str) -> str:
+    # Чистимо Markdown-форматування з TG
+    full_text = re.sub(r'\*{1,3}|_{1,3}|`{1,3}', '', full_text)
     lines = [l.strip() for l in full_text.splitlines() if len(l.strip()) > 10]
     # пропускаем первую строку если совпадает с заголовком
     if lines and lines[0].lower()[:50] == title.lower()[:50]:
@@ -76,35 +78,72 @@ def fetch_og_image(url: str) -> str:
     except Exception:
         return ""
 
+
+def validate_url(url: str) -> bool:
+    """Проверяем что URL отвечает. False — не добавляем ссылку в пост."""
+    if not url or not url.startswith("http"):
+        return False
+    try:
+        r = requests.head(url, timeout=5, allow_redirects=True,
+                          headers={"User-Agent": "Mozilla/5.0"})
+        return r.status_code < 400
+    except Exception:
+        try:
+            r = requests.get(url, timeout=5, stream=True,
+                             headers={"User-Agent": "Mozilla/5.0"})
+            return r.status_code < 400
+        except Exception:
+            return False
+
+
+def _is_mostly_cyrillic(text: str, threshold: float = 0.20) -> bool:
+    """True если ≥ threshold доли символов — кириллица."""
+    if not text:
+        return False
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return False
+    cyrillic = sum(1 for c in letters if 'Ѐ' <= c <= 'ӿ')
+    return cyrillic / len(letters) >= threshold
+
+
 def format_post(event: dict) -> str:
+    """Единый шаблон для RU-канала @WrPtCy."""
     title = _clean_title(event.get("title") or "")
-    body = _short_body(event.get("full_text") or "", title)
     emoji = pick_emoji(event)
 
-    lines = [f"{emoji} {title}", ""]
+    # Тело только если на русском
+    full_text = event.get("full_text") or ""
+    body = _short_body(full_text, title) if _is_mostly_cyrillic(full_text) else ""
 
-    # дата · место · цена в одну строку
+    lines = [f"{emoji}  {title}", ""]
+
+    # Дата и место
     meta_parts = []
     if event.get("date"):
-        meta_parts.append(event["date"])
+        meta_parts.append(f"📅 {event['date']}")
     venue = event.get("venue") or ""
     city = event.get("city") or ""
     if venue:
         meta_parts.append(venue)
-    elif city and city != "Cyprus":
+    elif city and city not in ("Cyprus", "Кипр"):
         meta_parts.append(city)
-    if event.get("price"):
-        meta_parts.append(event["price"])
     if meta_parts:
-        lines.append(" · ".join(meta_parts))
+        lines.append("  ".join(meta_parts))
+
+    if event.get("price"):
+        lines.append(f"💰 {event['price']}")
+
+    if meta_parts or event.get("price"):
         lines.append("")
 
     if body:
         lines.append(body)
         lines.append("")
 
-    if event.get("url"):
-        lines.append(f"🎟 Подробности → {event['url']}")
+    url = event.get("url", "")
+    if url:
+        lines.append(f"🔗 Подробнее → {url}")
         lines.append("")
 
     lines.append(_hashtags(event))
@@ -200,6 +239,11 @@ def post_new_events(events: list, channel_override: str = None, formatter=None):
 
         if event.get(f"posted_{platform}"):
             continue
+
+        # Проверяем URL перед постингом — битые ссылки убираем из поста
+        if event.get("url") and not validate_url(event["url"]):
+            print(f"[poster] Битая ссылка, убираем из поста: {event.get('url', '')[:80]}")
+            event = {**event, "url": ""}  # не мутируем оригинал
 
         text = fmt(event)
         photo_url = event.get("photo_url", "")

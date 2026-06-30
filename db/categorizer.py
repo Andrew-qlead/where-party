@@ -164,6 +164,8 @@ KEYWORDS = {
     "hiking": ("outdoor", 2), "поход": ("outdoor", 2), "хайкинг": ("outdoor", 2),
     "boat trip": ("outdoor", 2), "яхтенная прогулка": ("outdoor", 2),
     "sunset cruise": ("outdoor", 2), "sunset boat": ("outdoor", 2),
+    "streetwear": ("culture", 2), "sneaker": ("culture", 2), "urban culture": ("culture", 2),
+    "expo": ("culture", 2), "exhibition hall": ("culture", 2),
     "open air": ("outdoor", 2), "опен эйр": ("outdoor", 2),
     "beach party": ("outdoor", 2),
     "beach event": ("outdoor", 2),
