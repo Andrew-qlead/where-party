@@ -1,7 +1,9 @@
 # WR PT — Where Party Cyprus · Контекст проекта
 
 ## Суть проекта
-Агрегатор событий Кипра. Парсер собирает события → Firebase → Telegram каналы (RU+EN) + Мини-апп + Threads.
+Агрегатор событий Кипра. Парсер собирает события **только из Instagram** (через Apify) → Supabase (для основного приложения `wrpt-app`) + Firebase → Telegram каналы (RU+EN) + Мини-апп + Threads.
+
+> ⚠️ С 24.07.2026 источник ОДИН — Instagram через Apify. Остальные парсеры (Telegram/RSS/Eventbrite/InCyprus/TimeOut) удалены. Нужен ENV `APIFY_API_TOKEN`.
 
 ---
 
@@ -166,6 +168,14 @@ cyprusit, hub_cy, cyproplan, LentaCypRus, Vestnik_Kipra, cyprus_kipr, evropakipr
 | FIREBASE_SERVICE_ACCOUNT_JSON | JSON строкой |
 | THREADS_ACCESS_TOKEN | Threads API |
 | THREADS_USER_ID | Threads user ID |
+| **APIFY_API_TOKEN** | **Instagram-парсинг (Apify), обязателен** |
+| APIFY_IG_HASHTAGS | опц. CSV хэштегов (перекрывает дефолт) |
+| APIFY_IG_ACCOUNTS | опц. CSV аккаунтов (перекрывает дефолт) |
+| APIFY_IG_RESULTS_PER_URL | опц. постов на URL (дефолт 12) |
+| APIFY_IG_DAYS | опц. глубина в днях (дефолт 7) |
+| SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY | синк в основное приложение wrpt-app |
+
+> Устарели (парсеры удалены): `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TG_SESSION_STRING` — Telethon больше не используется.
 
 ---
 

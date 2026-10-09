@@ -414,8 +414,16 @@ function setCat(cat) {
 
 // ── UTILS ─────────────────────────────────────────────────────
 function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-function getTitle(e) { return (lang === "en" && e.title_en) ? e.title_en : (e.title || ""); }
-function getBody(e) { return (lang === "en" && e.full_text_en) ? e.full_text_en : (e.full_text || ""); }
+function getTitle(e) {
+  return lang === "en"
+    ? (e.title_en || e.title || "")
+    : (e.title_ru || e.title || "");
+}
+function getBody(e) {
+  return lang === "en"
+    ? (e.full_text_en || e.desc_en || e.full_text || "")
+    : (e.desc_ru || e.full_text || "");
+}
 
 const RU_MONTHS = { "января":0,"февраля":1,"марта":2,"апреля":3,"мая":4,"июня":5,"июля":6,"августа":7,"сентября":8,"октября":9,"ноября":10,"декабря":11 };
 const EN_MONTHS_MAP = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11,

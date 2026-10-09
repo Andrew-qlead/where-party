@@ -170,6 +170,63 @@ def get_unposted(platform: str = "tg", limit: int = 50) -> list[dict]:
             return []
 
 
+def get_existing_ids() -> set:
+    """Множество id всех событий в базе (для точного дедупа ДО обогащения —
+    чтобы не платить Haiku повторно за уже обработанный пост). Коллекция
+    автоочищается до 30 дней, так что объём ограничен. Тянем только id."""
+    try:
+        db = get_db()
+        # list_documents() отдаёт только ссылки (id), без чтения полей — дешевле stream()
+        return {ref.id for ref in db.collection("events").list_documents()}
+    except Exception as ex:
+        print(f"[firebase] get_existing_ids error: {ex}")
+        return set()
+
+
+def cleanup_past_events(days_grace: int = 1, orphan_days: int = 90) -> int:
+    """Удаляет из Firestore события с ПРОШЕДШЕЙ датой события (поле 'date',
+    формат '%d %b %Y'). Для событий без читаемой даты — фолбэк по created_at
+    старше orphan_days (чтобы не копились вечно). Возвращает число удалённых."""
+    try:
+        db = get_db()
+        now = datetime.now()
+        cutoff = now - timedelta(days=days_grace)
+        orphan_cutoff = (datetime.now(timezone.utc) - timedelta(days=orphan_days)).isoformat()
+
+        def _parse(ds: str):
+            for fmt in ("%d %b %Y", "%Y-%m-%d", "%d.%m.%Y"):
+                try:
+                    return datetime.strptime((ds or "").strip(), fmt)
+                except Exception:
+                    pass
+            return None
+
+        docs = list(db.collection("events").stream())
+        batch = db.batch()
+        n = 0
+        deleted = 0
+        for d in docs:
+            data = d.to_dict()
+            dt = _parse(data.get("date", ""))
+            past = (dt is not None and dt < cutoff)
+            orphan = (dt is None and (data.get("created_at") or "") < orphan_cutoff)
+            if past or orphan:
+                batch.delete(d.reference)
+                n += 1
+                deleted += 1
+                if n >= 400:
+                    batch.commit()
+                    batch = db.batch()
+                    n = 0
+        if n > 0:
+            batch.commit()
+        print(f"[firebase] удалено прошедших/устаревших событий: {deleted}")
+        return deleted
+    except Exception as ex:
+        print(f"[firebase] cleanup_past_events error: {ex}")
+        return 0
+
+
 def cleanup_old_events(days: int = 30):
     """Удаляем события старше N дней."""
     try:

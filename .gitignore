@@ -7,3 +7,4 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+scripts/check_agent_mail.sh

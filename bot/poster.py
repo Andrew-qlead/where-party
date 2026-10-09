@@ -191,6 +191,8 @@ def send_text(text: str, channel: str = None, reply_markup: dict = None) -> bool
         payload["reply_markup"] = reply_markup
     try:
         r = requests.post(tg_url, json=payload, timeout=15)
+        if not r.ok:
+            print(f"[poster] sendMessage {r.status_code}: {r.text[:200]}")
         return r.ok
     except Exception as ex:
         print(f"[poster] send_text error: {ex}")
@@ -213,8 +215,9 @@ def send_photo_url(photo_url: str, caption: str, channel: str = None,
                               timeout=20)
             if r.ok:
                 return True
-    except Exception:
-        pass
+            print(f"[poster] sendPhoto {r.status_code}: {r.text[:200]}")
+    except Exception as ex:
+        print(f"[poster] send_photo error: {ex}")
     return False
 
 # ── Основная функция постинга — использует Firebase как источник правды ────────

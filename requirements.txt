@@ -1,10 +1,10 @@
 requests
 beautifulsoup4
 lxml
-telethon
 python-dotenv
 firebase-admin
 deepl
 deep-translator
 rapidfuzz
-instaloader
+supabase
+anthropic

@@ -1,34 +1,44 @@
 """
-Instagram парсер через Instaloader.
-Нужны env vars: INSTAGRAM_SCRAPER_USERNAME, INSTAGRAM_SCRAPER_PASSWORD
-Аккаунт — обычный личный (не бизнес, не API).
+Instagram парсер через Apify (актор apify/instagram-scraper).
+
+Заменяет прежний Instaloader-логин (ловил checkpoint на Railway IP).
+Apify держит собственный пул резидентных прокси и залогиненных сессий, поэтому
+не банится на дата-центровом IP.
+
+ENV (Railway, сервис where-party):
+    APIFY_API_TOKEN            -- обязательный, токен из https://console.apify.com/account/integrations
+    APIFY_IG_HASHTAGS          -- опционально, CSV хэштегов (перекрывает дефолт)
+    APIFY_IG_ACCOUNTS          -- опционально, CSV юзернеймов (перекрывает дефолт)
+    APIFY_IG_RESULTS_PER_URL   -- опционально, постов на URL (дефолт 12)
+    APIFY_IG_DAYS              -- опционально, глубина в днях (дефолт 7)
+
+Стоимость: ~$1.50 за 1000 постов (тариф apify/instagram-scraper, май 2026).
+При дефолтах (10 хэштегов + 2 аккаунта × 12 постов ≈ 144 поста/цикл, 96 циклов/сутки)
+это оценочно ~$20-40/мес — держим объём под контролем через RESULTS_PER_URL.
 """
 import os
 import re
-import time
+import json
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-IG_USERNAME = os.environ.get("INSTAGRAM_SCRAPER_USERNAME", "")
-IG_PASSWORD = os.environ.get("INSTAGRAM_SCRAPER_PASSWORD", "")
-SESSION_FILE = "/tmp/ig_session"
+import requests
+
+APIFY_TOKEN = os.environ.get("APIFY_API_TOKEN", "")
+APIFY_ACTOR = "apify~instagram-scraper"
+APIFY_ENDPOINT = (
+    f"https://api.apify.com/v2/acts/{APIFY_ACTOR}/run-sync-get-dataset-items"
+)
 
 # Хэштеги с событиями Кипра
-HASHTAGS = [
-    "cyprusevents",
-    "cyprusparty",
-    "cyprusnightlife",
-    "limassolevents",
-    "nicosiaevents",
-    "larnacaevents",
-    "paphosevents",
-    "ayianapaevents",
-    "cyprusmusic",
-    "limassollife",
+_DEFAULT_HASHTAGS = [
+    "cyprusevents", "cyprusparty", "cyprusnightlife", "limassolevents",
+    "nicosiaevents", "larnacaevents", "paphosevents", "ayianapaevents",
+    "cyprusmusic", "limassollife",
 ]
 
 # Публичные аккаунты организаторов/площадок
-ACCOUNTS = [
+_DEFAULT_ACCOUNTS = [
     "soldouttickets",
     "vivacy_gr",
 ]
@@ -51,154 +61,152 @@ NOISE = [
 ]
 
 
-def _get_loader():
+def _env_list(name: str, default: list[str]) -> list[str]:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    return [x.strip().lstrip("#@") for x in raw.split(",") if x.strip()]
+
+
+def _results_per_url() -> int:
     try:
-        import instaloader
-    except ImportError:
-        print("[ig] instaloader не установлен")
-        return None
+        return max(1, int(os.environ.get("APIFY_IG_RESULTS_PER_URL", "12")))
+    except ValueError:
+        return 12
 
-    L = instaloader.Instaloader(
-        download_pictures=False,
-        download_videos=False,
-        download_comments=False,
-        save_metadata=False,
-        quiet=True,
-        request_timeout=10,
-        max_connection_attempts=1,  # не retry при ошибке
-    )
-    if not IG_USERNAME or not IG_PASSWORD:
-        return L
 
+def _days() -> int:
     try:
-        L.load_session_from_file(IG_USERNAME, SESSION_FILE)
-        print("[ig] Сессия загружена из файла")
-    except Exception:
-        try:
-            L.login(IG_USERNAME, IG_PASSWORD)
-            L.save_session_to_file(SESSION_FILE)
-            print("[ig] Логин успешен, сессия сохранена")
-        except Exception as e:
-            print(f"[ig] Ошибка логина: {e}")
-    return L
+        return max(1, int(os.environ.get("APIFY_IG_DAYS", "7")))
+    except ValueError:
+        return 7
 
 
-def _post_to_event(post, source_tag: str) -> dict | None:
-    caption = post.caption or ""
+def _item_to_event(item: dict) -> dict | None:
+    """Маппит один пост из датасета Apify в наш event-dict (та же схема,
+    что и у остальных источников: id/title/full_text/date/venue/city/url/
+    price/photo_url/source). None — если пост не событие / не про Кипр / мусор."""
+    caption = (item.get("caption") or "").strip()
     if len(caption) < 30:
         return None
 
-    # Убираем строки из одних хэштегов/эмодзи
+    # Убираем строки из одних хэштегов/эмодзи, берём осмысленный текст
     lines = []
     for l in caption.splitlines():
         l = l.strip()
         if not l:
             continue
-        clean = re.sub(r'#\S+', '', l).strip()
+        clean = re.sub(r"#\S+", "", l).strip()
         if len(clean) > 5:
             lines.append(clean)
-
     if not lines:
         return None
 
-    title = re.sub(r'\s+', ' ', lines[0])[:80]
+    title = re.sub(r"\s+", " ", lines[0])[:80]
     full_text = " ".join(lines[:4])[:600]
     text_lower = (title + " " + full_text).lower()
 
-    # Фильтры
+    # Аккаунты отобраны вручную (это и есть фильтр «Кипр»), а событие/не-событие
+    # решает Haiku (is_event). Здесь режем только явный спам/рекламу.
     if any(n in text_lower for n in NOISE):
         return None
-    if not any(kw in text_lower for kw in CYPRUS_KEYWORDS):
-        return None
-    if not any(kw in text_lower for kw in EVENT_KEYWORDS):
+
+    short_code = item.get("shortCode") or item.get("id") or ""
+    if not short_code:
         return None
 
-    photo_url = ""
-    try:
-        photo_url = post.url
-    except Exception:
-        pass
+    # Дата поста -> "%d %b %Y"
+    ts = item.get("timestamp") or ""
+    date_str = ""
+    if ts:
+        try:
+            date_str = datetime.fromisoformat(
+                ts.replace("Z", "+00:00")
+            ).strftime("%d %b %Y")
+        except Exception:
+            date_str = ""
 
-    event_id = f"ig_{hashlib.md5(str(post.mediaid).encode()).hexdigest()[:12]}"
+    owner = item.get("ownerUsername") or ""
+    location = item.get("locationName") or ""
+    url = item.get("url") or f"https://www.instagram.com/p/{short_code}/"
 
     return {
-        "id": event_id,
+        "id": f"ig_{hashlib.md5(str(short_code).encode()).hexdigest()[:12]}",
         "title": title,
         "full_text": full_text,
-        "date": post.date_utc.strftime("%d %b %Y"),
-        "venue": "",
+        "date": date_str,
+        "venue": location,
         "city": "Cyprus",
-        "url": f"https://www.instagram.com/p/{post.shortcode}/",
+        "url": url,
         "price": "",
-        "photo_url": photo_url,
-        "source": f"ig_{source_tag}",
+        "photo_url": item.get("displayUrl") or "",
+        "source": f"ig_{owner}" if owner else "ig",
     }
 
 
-def fetch_events_instagram() -> list[dict]:
-    if not IG_USERNAME or not IG_PASSWORD:
-        print("[ig] INSTAGRAM_SCRAPER_USERNAME/PASSWORD не заданы — пропускаем")
-        return []
-
+def _run_apify(direct_urls: list[str]) -> list[dict]:
+    """Один синхронный прогон актора: отдаём URL профилей/хэштегов, получаем
+    список постов. Тихо возвращаем [] при любой ошибке — цикл не должен падать."""
+    payload = {
+        "directUrls": direct_urls,
+        "resultsType": "posts",
+        "resultsLimit": _results_per_url(),
+        "onlyPostsNewerThan": f"{_days()} days",
+        "addParentData": False,
+    }
     try:
-        import instaloader
-    except ImportError:
-        print("[ig] instaloader не установлен")
-        return []
-
-    L = _get_loader()
-    if L is None:
-        return []
-
-    # Проверяем что логин прошёл — если нет, сразу выходим без retry
-    try:
-        if not L.context.is_logged_in:
-            print("[ig] Не залогинен — пропускаем")
+        resp = requests.post(
+            APIFY_ENDPOINT,
+            params={"timeout": 280},
+            headers={"Authorization": f"Bearer {APIFY_TOKEN}"},
+            json=payload,
+            timeout=300,
+        )
+        if resp.status_code >= 400:
+            print(f"[ig] Apify HTTP {resp.status_code}: {resp.text[:200]}")
             return []
-    except Exception:
-        print("[ig] Не залогинен — пропускаем")
+        data = resp.json()
+        return data if isinstance(data, list) else []
+    except Exception as e:
+        print(f"[ig] Apify запрос упал: {str(e)[:120]}")
         return []
+
+
+def fetch_events_instagram() -> list[dict]:
+    if not APIFY_TOKEN:
+        print("[ig] APIFY_API_TOKEN не задан — пропускаем Instagram")
+        return []
+
+    # Только профили: скрейп хэштегов Instagram закрыл (explore/tags отдаёт
+    # метаданные без подписей), поэтому источник — публичные аккаунты
+    # организаторов/площадок Кипра. Список задаётся через APIFY_IG_ACCOUNTS.
+    accounts = _env_list("APIFY_IG_ACCOUNTS", _DEFAULT_ACCOUNTS)
+    direct_urls = [f"https://www.instagram.com/{a}/" for a in accounts]
+
+    if not direct_urls:
+        print("[ig] Нет аккаунтов (APIFY_IG_ACCOUNTS пуст) — пропускаем")
+        return []
+
+    print(f"[ig] Apify: {len(accounts)} аккаунтов, "
+          f"{_results_per_url()} постов/аккаунт, глубина {_days()} дн.")
+
+    items = _run_apify(direct_urls)
+    print(f"[ig] Apify вернул {len(items)} постов")
 
     events = []
-    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    seen_ids = set()
+    for item in items:
+        ev = _item_to_event(item)
+        if ev and ev["id"] not in seen_ids:
+            seen_ids.add(ev["id"])
+            events.append(ev)
 
-    for tag in HASHTAGS:
-        try:
-            hashtag = instaloader.Hashtag.from_name(L.context, tag)
-            count = 0
-            for post in hashtag.get_posts():
-                if post.date_utc < cutoff:
-                    break
-                if count >= 15:
-                    break
-                ev = _post_to_event(post, tag)
-                if ev:
-                    events.append(ev)
-                count += 1
-                time.sleep(3)
-            print(f"[ig] #{tag}: проверено {count} постов")
-        except Exception as e:
-            print(f"[ig] #{tag} ошибка: {str(e)[:80]}")
-        time.sleep(5)
-
-    for account in ACCOUNTS:
-        try:
-            profile = instaloader.Profile.from_username(L.context, account)
-            count = 0
-            for post in profile.get_posts():
-                if post.date_utc < cutoff:
-                    break
-                if count >= 10:
-                    break
-                ev = _post_to_event(post, account)
-                if ev:
-                    events.append(ev)
-                count += 1
-                time.sleep(3)
-            print(f"[ig] @{account}: проверено {count} постов")
-        except Exception as e:
-            print(f"[ig] @{account} ошибка: {str(e)[:80]}")
-        time.sleep(5)
-
-    print(f"[ig] Итого событий: {len(events)}")
+    print(f"[ig] После фильтра (Кипр + событие): {len(events)}")
     return events
+
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+    evs = fetch_events_instagram()
+    print(json.dumps(evs[:5], ensure_ascii=False, indent=2))
